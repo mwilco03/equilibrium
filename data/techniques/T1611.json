@@ -48,14 +48,15 @@
     {
       "id": null,
       "name": "OS API Execution",
-      "data_source_id": "DS0028",
-      "data_source_name": "Logon Session",
-      "definition": "Direct kernel API and syscall observation. Container escape via syscalls (unshare, keyctl, mount, pivot_root) is captured at this layer by an eBPF or LSM-based sensor.",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "Direct kernel API and syscall observation. Container escape via syscalls (unshare, setns, keyctl, mount, pivot_root) is captured at this layer by an eBPF or LSM-based sensor. (Equilibrium previously labeled this DS0028 Logon Session in error; corrected per upstream cross-reference.)",
       "url": "https://attack.mitre.org/datasources/DS0009/",
       "relevant_events": [
         "Syscall trace: unshare(CLONE_NEWNS) followed by mount() of host paths from inside a container",
         "Syscall trace: setns() onto a host namespace fd opened from /proc/1/ns",
-        "Syscall trace: keyctl manipulation of the host keyring"
+        "Syscall trace: keyctl manipulation of the host keyring",
+        "Syscall trace: pivot_root() invoked from inside a container"
       ]
     },
     {
@@ -68,7 +69,9 @@
       "relevant_events": [
         "Write to a path that resolves outside the container's chroot via a hostPath bind",
         "Write to /var/run/docker.sock or /var/run/containerd/containerd.sock from a container",
-        "Write to /etc/cron.* or /var/lib/kubelet/pods/*/credentials from a container"
+        "Write to /etc/cron.* or /var/lib/kubelet/pods/*/credentials from a container",
+        "Write to /sys/fs/cgroup/*/release_agent from inside a container (cgroup release_agent escape; Falco stable rule covers this exactly)",
+        "Write to /proc/sysrq-trigger from inside a container"
       ]
     }
   ],
@@ -118,7 +121,7 @@
       "language": "falco_yaml",
       "title": "Falco: container escape syscall trace",
       "intent": "Detect runtime evidence of an escape attempt from inside a container: namespace-transition syscalls, exec of escape utilities, or writes to runtime sockets.",
-      "query": "- list: container_escape_binaries\n  items: [nsenter, unshare, chroot, runc, crictl, ctr, docker, kubectl]\n\n- list: runtime_sockets\n  items: [/var/run/docker.sock, /var/run/containerd/containerd.sock, /run/crio/crio.sock]\n\n- macro: in_container\n  condition: container.id != host\n\n- rule: Container Escape Utility Executed\n  desc: A known escape utility was executed inside a container.\n  condition: spawned_process and in_container and proc.name in (container_escape_binaries)\n  output: >\n    Container escape utility executed\n    (proc=%proc.name cmdline=%proc.cmdline pid_ns=%proc.pid_ns container=%container.name\n     image=%container.image.repository user=%user.name)\n  priority: CRITICAL\n  tags: [container, mitre_privilege_escalation, T1611]\n\n- rule: Write To Runtime Socket From Container\n  desc: Write to a container runtime socket from inside a container, indicating runtime takeover.\n  condition: open_write and in_container and fd.name in (runtime_sockets)\n  output: >\n    Container wrote to runtime socket\n    (fd=%fd.name proc=%proc.name container=%container.name image=%container.image.repository)\n  priority: CRITICAL\n  tags: [container, mitre_privilege_escalation, T1611]\n",
+      "query": "- list: container_escape_binaries\n  items: [nsenter, unshare, chroot, runc, crictl, ctr, docker, kubectl, debugfs, mount]\n\n- list: runtime_sockets\n  items: [/var/run/docker.sock, /var/run/containerd/containerd.sock, /run/crio/crio.sock]\n\n- macro: in_container\n  condition: container.id != host\n\n- rule: Container Escape Utility Executed\n  desc: A known escape utility was executed inside a container.\n  condition: spawned_process and in_container and proc.name in (container_escape_binaries)\n  output: >\n    Container escape utility executed\n    (proc=%proc.name cmdline=%proc.cmdline pid_ns=%proc.pid_ns container=%container.name\n     image=%container.image.repository user=%user.name)\n  priority: CRITICAL\n  tags: [container, mitre_privilege_escalation, T1611]\n\n- rule: Write To Runtime Socket From Container\n  desc: Write to a container runtime socket from inside a container, indicating runtime takeover.\n  condition: open_write and in_container and fd.name in (runtime_sockets)\n  output: >\n    Container wrote to runtime socket\n    (fd=%fd.name proc=%proc.name container=%container.name image=%container.image.repository)\n  priority: CRITICAL\n  tags: [container, mitre_privilege_escalation, T1611]\n",
       "required_telemetry": [
         "Sysdig agent (or open-source Falco) deployed as a DaemonSet on every node",
         "Modern syscall driver (eBPF-CO-RE) loaded so namespace fields are populated",

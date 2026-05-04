@@ -28,7 +28,7 @@
       "url": "https://attack.mitre.org/datasources/DS0015/",
       "relevant_events": [
         "Kubernetes audit event: verb=create, objectRef.resource in {pods, deployments, daemonsets, jobs, cronjobs}",
-        "Docker daemon event: type=container, action=create",
+        "Docker daemon event from `docker events` API: type=container, action=create (covers standalone Docker hosts outside Kubernetes; Atomic Red Team T1610 test exercises this exact path)",
         "containerd event: ContainerCreate"
       ]
     },

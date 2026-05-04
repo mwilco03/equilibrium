@@ -42,6 +42,7 @@
         "sql",
         "kql",
         "spl",
+        "cql",
         "eql",
         "sigma",
         "osquery",

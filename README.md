@@ -16,6 +16,12 @@ Every vendor detection in this repository is anchored to one or more MITRE Data 
 
 The reason: tactic labels and product categories are how vendors organize marketing material. Data Components are the smallest unit of telemetry that an analyst can verify exists in their pipeline. Anchoring on them turns "do we cover Execution?" into "do we have at least one detection per relevant Data Component for every Execution technique we care about?" The matrix UI exposes those gaps directly.
 
+### Provenance note: ATT&CK upstream gap
+
+For the container-specific techniques in scope (T1609, T1610, T1611, T1525), MITRE ATT&CK v19's STIX bundle ships an **empty `x_mitre_data_sources` array**. MITRE has migrated away from inline data-source strings in favor of separate Data Source (DS####) and Data Component objects, but it has not (yet) wired those relationship objects to these container techniques. Verified 2026-05-04 against the canonical files in `mitre/cti` master.
+
+Equilibrium fills the gap by inferring the relevant DS#### IDs from MITRE's canonical Data Source catalog and from authoritative cross-references (Microsoft Kubernetes Threat Matrix, Atomic Red Team, SigmaHQ, falcosecurity/rules). These mappings are best-practice community inference, not MITRE-published relationships, and are documented as such in `docs/research/technique-validation.md`. We label confidence per claim per the project's epistemic discipline (Confirmed / Likely / Possible).
+
 ## Repository layout
 
 ```

@@ -16,7 +16,7 @@
     "name": "Compromised Image In Registry",
     "tactic": "initial_access",
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Compromised%20Image%20In%20Registry/",
-    "description": "An adversary places a backdoored image in the cluster's internal or third-party registry. Workloads pulling that image, often by a mutable tag like `latest` or `prod`, execute the implanted code on every restart. The Microsoft matrix categorizes this as Initial Access from the cluster's point of view; MITRE categorizes it as Persistence from the adversary's."
+    "description": "An adversary places a backdoored image in the cluster's internal or third-party registry. Workloads pulling that image, often by a mutable tag like `latest` or `prod`, execute the implanted code on every restart. The Microsoft matrix categorizes this as Initial Access from the cluster's point of view; MITRE categorizes it as Persistence from the adversary's. The Microsoft matrix entry MS-TA9002 also cross-maps to T1195.002 (Supply Chain Compromise: Compromise Software Supply Chain), framing the same action as a supply-chain primitive."
   },
   "data_components": [
     {

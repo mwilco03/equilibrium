@@ -29,7 +29,8 @@
       "relevant_events": [
         "Kubernetes audit event: verb=create, objectRef.resource=pods, objectRef.subresource=exec",
         "Kubernetes audit event: verb=create, objectRef.resource=pods, objectRef.subresource=attach",
-        "kubelet log entry for /exec and /run handlers"
+        "kubelet log entry for /exec and /run handlers",
+        "Direct kubelet exec endpoint: POST to kubelet TCP/10250 at path /exec or /run (bypasses API server audit when kubelet is reachable directly)"
       ]
     },
     {
@@ -54,6 +55,18 @@
       "relevant_events": [
         "Process exec event with parent=runc or parent=containerd-shim and pid_namespace==target_container",
         "EDR process tree showing shell/binary launched outside the documented entrypoint chain"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Container Modification",
+      "data_source_id": "DS0032",
+      "data_source_name": "Container",
+      "definition": "Modification of an existing workload's pod template via a patch operation against Deployment, DaemonSet, or StatefulSet resources to inject a sidecar container. This is a second execution path for T1609 alongside direct exec, tagged T1609 by SigmaHQ community rules. The new container starts on next pod replacement and runs adversary code in the same pod network/PID namespace as the legitimate container.",
+      "url": "https://attack.mitre.org/datasources/DS0032/",
+      "relevant_events": [
+        "Kubernetes audit event: verb=patch, apiGroup=apps, objectRef.resource in {deployments, daemonsets, statefulsets}, requestObject.spec.template.spec.containers includes a container not present in the previous revision",
+        "New container appearing in a running pod's spec that was not present at original pod creation"
       ]
     },
     {

@@ -56,6 +56,7 @@ export const QUERY_LANGUAGES = [
   "sql",
   "kql",
   "spl",
+  "cql",
   "eql",
   "sigma",
   "osquery",
