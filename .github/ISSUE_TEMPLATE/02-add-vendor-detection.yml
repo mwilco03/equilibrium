@@ -53,6 +53,8 @@ body:
         - osquery
         - ebpf_dsl
         - rego
+        - secl
+        - datadog_log_search
         - json_rule
         - yaml_rule
     validations:
