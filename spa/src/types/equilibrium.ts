@@ -61,6 +61,7 @@ export const QUERY_LANGUAGES = [
   "sigma",
   "osquery",
   "ebpf_dsl",
+  "rego",
   "json_rule",
   "yaml_rule",
 ] as const;

@@ -126,19 +126,23 @@
     },
     {
       "vendor": "upwind",
-      "language": "ebpf_dsl",
-      "title": "eBPF: process born under runc/containerd-shim outside entrypoint chain",
-      "intent": "Detect a process executing inside a container whose parent is the runtime's exec helper rather than the container's documented entrypoint, indicating a remote exec session opened the process.",
-      "query": "rule: container_admin_exec_runtime_signal\nwhen:\n  event.kind == \"process_exec\"\n  and process.parent.name in [\"runc\", \"containerd-shim-runc-v2\", \"dockerd\", \"docker-runc\"]\n  and process.parent.args contains \"exec\"\n  and container.id != \"\"\n  and process.name not in [\"pause\"]\nselect:\n  - cluster.name\n  - workload.namespace\n  - workload.name\n  - container.image\n  - process.cmdline\n  - process.parent.cmdline\n  - identity.k8s_user        # propagated from API server when Upwind audit-log enrichment is on\n  - identity.k8s_serviceaccount\nseverity: high\n",
+      "language": "rego",
+      "title": "Upwind Explorer: process born under runc/containerd-shim outside entrypoint chain",
+      "intent": "Detect a process executing inside a container whose parent is the runtime's exec helper rather than the container's documented entrypoint, indicating a remote exec session opened the process. Authored as a Rego policy for Upwind Explorer, the documented custom-detection path.",
+      "query": "package upwind.detections.t1609.container_admin_exec_runtime_signal\n\n# Detects an exec session into a running container by matching the process\n# ancestry signature: parent is the runtime's exec helper (runc / containerd-\n# shim / dockerd) rather than the container's documented entrypoint chain.\n#\n# Input shape follows the Upwind Explorer process_exec event, parameterized\n# below. Field paths (input.process.parent.name, input.identity.k8s_user)\n# follow the public Explorer documentation pattern; verify against your\n# tenant's actual schema before deploying.\n\ndefault deny := false\n\nruntime_exec_helpers := {\n  \"runc\",\n  \"containerd-shim-runc-v2\",\n  \"dockerd\",\n  \"docker-runc\",\n}\n\nignored_child_names := {\"pause\"}\n\ndeny if {\n  input.event.kind == \"process_exec\"\n  input.container.id != \"\"\n  input.process.parent.name in runtime_exec_helpers\n  contains(input.process.parent.args, \"exec\")\n  not input.process.name in ignored_child_names\n}\n\nfinding := {\n  \"severity\": \"high\",\n  \"technique\": \"T1609\",\n  \"cluster\": input.cluster.name,\n  \"namespace\": input.workload.namespace,\n  \"workload\": input.workload.name,\n  \"image\": input.container.image,\n  \"process\": input.process.cmdline,\n  \"parent\": input.process.parent.cmdline,\n  \"k8s_user\": input.identity.k8s_user,\n  \"k8s_serviceaccount\": input.identity.k8s_serviceaccount,\n} if {\n  deny\n}\n",
       "required_telemetry": [
-        "Upwind sensor (eBPF) deployed as a DaemonSet on every node",
-        "Upwind Kubernetes audit log enrichment enabled so process events carry the originating API principal"
+        "Upwind sensor (eBPF DaemonSet) deployed on every node",
+        "Upwind Kubernetes audit log enrichment enabled so process events carry the originating API principal (input.identity.k8s_user / k8s_serviceaccount)",
+        "Upwind Explorer custom-policy authoring access for the tenant"
       ],
       "mapped_data_components": ["Process Creation", "Command Execution"],
       "confidence": "high",
-      "false_positive_considerations": "Liveness/readiness probes that shell into the container are legitimate exec ancestry; suppress by probe annotation or by allowlisting the kubelet probe principal.",
-      "limitations": "An adversary who lands in the container by other means (compromised entrypoint, sidecar) will not trip this rule; combine with the audit-log rule.",
-      "references": []
+      "false_positive_considerations": "Liveness/readiness probes that shell into the container are legitimate exec ancestry. Allowlist by kubelet probe principal or by container-and-cmdline pair, not by process name.",
+      "limitations": "Authoring custom Rego policies against Upwind Explorer requires access to Upwind's documentation center, which is login-gated. The field names above follow public marketing/blog references and may need adjustment against the actual tenant schema.",
+      "references": [
+        "https://docs.upwind.io/public/introduction/concepts/upwind-architecture/sensors",
+        "https://www.upwind.io/feed/from-query-to-policy-enforcing-real-time-cloud-compliance-with-upwind-explorer"
+      ]
     },
     {
       "vendor": "snowflake",

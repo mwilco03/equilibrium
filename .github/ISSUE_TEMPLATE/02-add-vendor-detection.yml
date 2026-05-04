@@ -52,6 +52,7 @@ body:
         - sigma
         - osquery
         - ebpf_dsl
+        - rego
         - json_rule
         - yaml_rule
     validations:
