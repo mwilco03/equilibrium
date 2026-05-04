@@ -4,6 +4,24 @@
 
 :root {
   color-scheme: dark;
+
+  /* Tactic palette: matches tailwind.config.js colors.tactic.*, exposed
+     as CSS variables so MatrixGrid can wire the column-header underline
+     via inline style without round-tripping through className strings. */
+  --tactic-reconnaissance: #334155;
+  --tactic-resource_development: #1e293b;
+  --tactic-initial_access: #475569;
+  --tactic-execution: #dc2626;
+  --tactic-persistence: #ea580c;
+  --tactic-privilege_escalation: #d97706;
+  --tactic-defense_evasion: #65a30d;
+  --tactic-credential_access: #0891b2;
+  --tactic-discovery: #2563eb;
+  --tactic-lateral_movement: #7c3aed;
+  --tactic-collection: #db2777;
+  --tactic-command_and_control: #be185d;
+  --tactic-exfiltration: #9f1239;
+  --tactic-impact: #7f1d1d;
 }
 
 html,
@@ -15,4 +33,12 @@ body,
 pre,
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Visible keyboard focus on every interactive element. The default
+   browser ring loses contrast against zinc-900 cards, so enforce ours. */
+*:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+  border-radius: 0.25rem;
 }
