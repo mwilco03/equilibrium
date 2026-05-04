@@ -90,9 +90,9 @@
       "required": ["data_source_id", "data_source_name", "name"],
       "properties": {
         "id": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^DC\\d{4}$",
-          "description": "MITRE Data Component identifier (e.g., DC0064). Optional when MITRE has not assigned one."
+          "description": "MITRE Data Component identifier (e.g., DC0064). Use null when MITRE has not assigned one."
         },
         "name": {
           "type": "string",
