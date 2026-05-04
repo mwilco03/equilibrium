@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9027",
+  "title": "Application credentials in configuration files",
+  "description": "Developers store secrets in the Kubernetes configuration files, such as environment variables in the pod configuration. Such behavior is commonly seen in clusters that are monitored by Microsoft Defender for Cloud. Attackers who have access to those configurations, by querying the API server or by accessing those files on the developer\u2019s endpoint, can steal the stored secrets and use them.  Using those credentials attackers may gain access to additional resources inside and outside the cluster.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1552",
+    "name": "Unsecured Credentials",
+    "tactics": [
+      "credential_access"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1552/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9027",
+    "name": "Application credentials in configuration files",
+    "tactic": "credential_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20credentials%20in%20configuration%20files/",
+    "description": "Developers store secrets in the Kubernetes configuration files, such as environment variables in the pod configuration. Such behavior is commonly seen in clusters that are monitored by Microsoft Defender for Cloud. Attackers who have access to those configurations, by querying the API server or by accessing those files on the developer\u2019s endpoint, can steal the stored secrets and use them.  Using those credentials attackers may gain access to additional resources inside and outside the cluster."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20credentials%20in%20configuration%20files/",
+    "https://attack.mitre.org/techniques/T1552/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

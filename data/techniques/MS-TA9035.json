@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9035",
+  "title": "CoreDNS poisoning",
+  "description": "CoreDNS is a modular Domain Name System (DNS) server written in Go, hosted by Cloud Native Computing Foundation (CNCF). CoreDNS is the main DNS service that is being used in Kubernetes. The configuration of CoreDNS can be modified by a file named corefile. In Kubernetes, this file is stored in a ConfigMap object, located at the kube-system namespace. If attackers have permissions to modify the ConfigMap, for example by using the container\u2019s service account, they can change the behavior of the cluster\u2019s DNS, poison it, and take the network identity of other services.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1557",
+    "name": "Adversary-in-the-Middle",
+    "tactics": [
+      "credential_access",
+      "collection"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1557/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9035",
+    "name": "CoreDNS poisoning",
+    "tactic": "lateral_movement",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/CoreDNS%20poisoning/",
+    "description": "CoreDNS is a modular Domain Name System (DNS) server written in Go, hosted by Cloud Native Computing Foundation (CNCF). CoreDNS is the main DNS service that is being used in Kubernetes. The configuration of CoreDNS can be modified by a file named corefile. In Kubernetes, this file is stored in a ConfigMap object, located at the kube-system namespace. If attackers have permissions to modify the ConfigMap, for example by using the container\u2019s service account, they can change the behavior of the cluster\u2019s DNS, poison it, and take the network identity of other services."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/CoreDNS%20poisoning/",
+    "https://attack.mitre.org/techniques/T1557/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

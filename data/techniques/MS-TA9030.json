@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9030",
+  "title": "Access Kubelet API",
+  "description": "Kubelet is the Kubernetes agent that is installed on each node. Kubelet is responsible for the proper execution of pods that are assigned to the node. Kubelet exposes a read-only API service that does not require authentication (TCP port 10255). Attackers with network access to the host (for example, via running code on a compromised container) can send API requests to the Kubelet API. Specifically querying https://[NODE IP]:10255/pods/ retrieves the running pods on the node. https://[NODE IP]:10255/spec/ retrieves information about the node itself, such as CPU and memory consumption.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1613",
+    "name": "Container and Resource Discovery",
+    "tactics": [
+      "discovery"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1613/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9030",
+    "name": "Access Kubelet API",
+    "tactic": "discovery",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20Kubelet%20API/",
+    "description": "Kubelet is the Kubernetes agent that is installed on each node. Kubelet is responsible for the proper execution of pods that are assigned to the node. Kubelet exposes a read-only API service that does not require authentication (TCP port 10255). Attackers with network access to the host (for example, via running code on a compromised container) can send API requests to the Kubelet API. Specifically querying https://[NODE IP]:10255/pods/ retrieves the running pods on the node. https://[NODE IP]:10255/spec/ retrieves information about the node itself, such as CPU and memory consumption."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20Kubelet%20API/",
+    "https://attack.mitre.org/techniques/T1613/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

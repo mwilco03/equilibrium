@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9039",
+  "title": "Resource hijacking",
+  "description": "Attackers may abuse a compromised resource for running tasks. A common abuse is to use compromised resources for running digital currency mining. Attackers who have access to a container in the cluster or have permissions to create new containers may use them for such activity.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1496",
+    "name": "Resource Hijacking",
+    "tactics": [
+      "impact"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1496/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9039",
+    "name": "Resource hijacking",
+    "tactic": "impact",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Resource%20hijacking/",
+    "description": "Attackers may abuse a compromised resource for running tasks. A common abuse is to use compromised resources for running digital currency mining. Attackers who have access to a container in the cluster or have permissions to create new containers may use them for such activity."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Resource%20hijacking/",
+    "https://attack.mitre.org/techniques/T1496/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

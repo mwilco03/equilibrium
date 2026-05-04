@@ -1,0 +1,48 @@
+{
+  "id": "EQ-MS-TA9001",
+  "title": "Using Cloud Credentials",
+  "description": "In cases where the Kubernetes cluster is deployed in a public cloud (e.g., AKS in Azure, GKE in GCP, or EKS in AWS), compromised cloud credential can lead to cluster takeover. Attackers who have access to the cloud account credentials can get access to the cluster\u2019s management layer.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1078.004",
+    "name": "Cloud Accounts",
+    "tactics": [
+      "defense_evasion",
+      "persistence",
+      "privilege_escalation",
+      "initial_access"
+    ],
+    "sub_technique_of": "T1078",
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1078/004/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9001",
+    "name": "Using Cloud Credentials",
+    "tactic": "initial_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Using%20Cloud%20Credentials/",
+    "description": "In cases where the Kubernetes cluster is deployed in a public cloud (e.g., AKS in Azure, GKE in GCP, or EKS in AWS), compromised cloud credential can lead to cluster takeover. Attackers who have access to the cloud account credentials can get access to the cluster\u2019s management layer."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Using%20Cloud%20Credentials/",
+    "https://attack.mitre.org/techniques/T1078/",
+    "https://attack.mitre.org/techniques/T1078/004/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

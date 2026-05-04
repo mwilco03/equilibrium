@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9026",
+  "title": "Mount service principal",
+  "description": "When the cluster is deployed in the cloud, in some cases attackers can leverage their access to a container in the cluster to gain cloud credentials. For example, in AKS each node contains service principal credential.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1552.001",
+    "name": "MITRE T1552.001",
+    "tactics": [
+      "credential_access"
+    ],
+    "sub_technique_of": "T1552",
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1552/001/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9026",
+    "name": "Mount service principal",
+    "tactic": "credential_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Mount%20service%20principal/",
+    "description": "When the cluster is deployed in the cloud, in some cases attackers can leverage their access to a container in the cluster to gain cloud credentials. For example, in AKS each node contains service principal credential."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Mount%20service%20principal/",
+    "https://attack.mitre.org/techniques/T1552/",
+    "https://attack.mitre.org/techniques/T1552/001/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

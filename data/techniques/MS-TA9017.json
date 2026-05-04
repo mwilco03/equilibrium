@@ -1,0 +1,32 @@
+{
+  "id": "EQ-MS-TA9017",
+  "title": "Static Pods",
+  "description": "Static Pods are created and managed by the the kubelet daemon on each node, without the API server observing them. Kubelet watches each static pod and restart it if it fails.    Kubelet automatically tries to create a mirror pod on the Kubernetes API server to represent the static pods, so it will be visible on the API server, however the pods cannot be controlled from there.  Static Pods are created based on a web or local filesystem YAML files which kubelet observes for changes. An attacker can use the static pods manifest file to ensure that a pod is always running on a cluster node and prevent it from being changed or deleted from the Kubernetes API server.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": null,
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9017",
+    "name": "Static Pods",
+    "tactic": "persistence",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Static%20Pods/",
+    "description": "Static Pods are created and managed by the the kubelet daemon on each node, without the API server observing them. Kubelet watches each static pod and restart it if it fails.    Kubelet automatically tries to create a mirror pod on the Kubernetes API server to represent the static pods, so it will be visible on the API server, however the pods cannot be controlled from there.  Static Pods are created based on a web or local filesystem YAML files which kubelet observes for changes. An attacker can use the static pods manifest file to ensure that a pod is always running on a cluster node and prevent it from being changed or deleted from the Kubernetes API server."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Static%20Pods/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

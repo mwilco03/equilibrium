@@ -1,18 +1,29 @@
 {
-  "id": "EQ-T1525",
+  "id": "EQ-MS-TA9002",
   "title": "Implant Internal Image",
   "description": "An adversary implants malicious content into a container image stored in an internal registry the cluster pulls from. Once provisioning tools (GitOps controllers, Helm releases, deployment pipelines) deploy the latest tag of the affected image, the adversary gains persistent execution inside the cluster every time the workload restarts. Detection is anchored on registry write events, image digest divergence between policy and reality, and admission-time signature verification failures.",
-  "tags": ["kubernetes", "containers", "persistence", "supply-chain", "registry"],
+  "tags": [
+    "kubernetes",
+    "containers",
+    "persistence",
+    "supply-chain",
+    "registry"
+  ],
   "mitre_attack": {
     "technique_id": "T1525",
     "name": "Implant Internal Image",
-    "tactics": ["persistence"],
+    "tactics": [
+      "persistence"
+    ],
     "sub_technique_of": null,
-    "platforms": ["Containers", "IaaS"],
+    "platforms": [
+      "Containers",
+      "IaaS"
+    ],
     "url": "https://attack.mitre.org/techniques/T1525/"
   },
   "microsoft_k8s_matrix": {
-    "id": null,
+    "id": "MS-TA9002",
     "name": "Compromised Image In Registry",
     "tactic": "initial_access",
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Compromised%20Image%20In%20Registry/",
@@ -78,21 +89,32 @@
       "name": "Detection Strategy for T1525 Implant Internal Image",
       "summary": "Compare every registry push and tag-mutation event against the set of digests produced by the canonical build pipeline. Surface any tag whose current digest has no matching CI provenance, and any pull of such a tag by a cluster workload.",
       "url": "https://attack.mitre.org/techniques/T1525/",
-      "data_component_refs": ["Image Creation", "Image Modification", "Application Log Content"]
+      "data_component_refs": [
+        "Image Creation",
+        "Image Modification",
+        "Application Log Content"
+      ]
     },
     {
       "id": "AN0946",
       "name": "Container image backdoor followed by deployment",
       "summary": "Malicious code injection into container images followed by a registry push and subsequent use in new pod deployments inside the cluster.",
       "url": "https://attack.mitre.org/techniques/T1525/",
-      "data_component_refs": ["Image Creation", "Image Modification", "Application Log Content"]
+      "data_component_refs": [
+        "Image Creation",
+        "Image Modification",
+        "Application Log Content"
+      ]
     },
     {
       "id": "AN0947",
       "name": "Cloud VM image with persistence followed by provisioning",
       "summary": "Creation or alteration of cloud VM images (AMIs, custom images) containing persistence mechanisms, followed by infrastructure provisioning using these compromised images.",
       "url": "https://attack.mitre.org/techniques/T1525/",
-      "data_component_refs": ["Image Creation", "Image Modification"]
+      "data_component_refs": [
+        "Image Creation",
+        "Image Modification"
+      ]
     }
   ],
   "vendor_detections": [
@@ -107,7 +129,11 @@
         "ciIdentities and protectedRepoPrefix maintained as constants, not inlined per query",
         "Audit logging enabled on the registry"
       ],
-      "mapped_data_components": ["Image Creation", "Application Log Content", "User Account Authentication"],
+      "mapped_data_components": [
+        "Image Creation",
+        "Application Log Content",
+        "User Account Authentication"
+      ],
       "confidence": "high",
       "false_positive_considerations": "Manual operator pushes (break-glass, hotfix) appear here and are legitimate. Treat as alerts that page a maintainer for justification rather than auto-remediated.",
       "limitations": "Cannot detect implants performed via legitimate CI access (insider threat, compromised CI). Pair with provenance verification (SLSA, in-toto) at admission.",
@@ -126,7 +152,10 @@
         "Image-pull events landed in K8S.PUBLIC.IMAGE_PULLS (e.g., from kubelet event hooks or admission controller logs)",
         "CI build attestations landed in CI.PUBLIC.BUILD_ATTESTATIONS (Sigstore Rekor entries, in-toto attestations, or pipeline run artifacts)"
       ],
-      "mapped_data_components": ["Image Creation", "Image Modification"],
+      "mapped_data_components": [
+        "Image Creation",
+        "Image Modification"
+      ],
       "confidence": "medium",
       "false_positive_considerations": "Vendored base images that the team pulls directly without a pipeline build will appear as gaps; allowlist their repositories explicitly.",
       "limitations": "Lake latency means this is hunt/audit, not real-time prevention. Pair with admission-time signature verification (Cosign verify-attestation, Connaisseur, Kyverno verifyImages) for blocking.",
@@ -146,7 +175,10 @@
         "Sigstore policy controller (or equivalent) invoked at admission so image.signers is populated",
         "Trusted signer subjects maintained as a constant list, not literal strings inline"
       ],
-      "mapped_data_components": ["Application Log Content", "Image Modification"],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Image Modification"
+      ],
       "confidence": "medium",
       "false_positive_considerations": "First rollout of a new pipeline often produces unsigned images; coordinate the policy turn-on with platform team.",
       "limitations": "Requires upstream signing discipline. If only a fraction of images are signed, this alert fires constantly and is ignored.",
@@ -167,6 +199,8 @@
     "schema_version": "0.1.0",
     "created": "2026-05-04",
     "updated": "2026-05-04",
-    "contributors": ["equilibrium-bootstrap"]
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
   }
 }

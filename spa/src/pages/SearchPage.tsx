@@ -58,10 +58,11 @@ export function SearchPage() {
             key={h.id}
             className="rounded border border-zinc-800 bg-zinc-900/60 p-3 hover:border-cyan-500"
           >
-            <Link to={`/techniques/${h.document.technique_id}`} className="block">
+            <Link to={`/techniques/${h.document.id.replace(/^EQ-/, "")}`} className="block">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs text-zinc-400">
-                  {h.document.technique_id}
+                  {h.document.id.replace(/^EQ-/, "")}
+                  {h.document.technique_id ? ` · ${h.document.technique_id}` : ""}
                 </span>
                 <span className="font-medium">{h.document.title}</span>
                 <span className="ml-auto text-xs text-zinc-500">

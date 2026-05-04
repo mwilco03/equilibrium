@@ -125,7 +125,9 @@ export interface TechniqueRecord {
   title: string;
   description: string;
   tags?: string[];
-  mitre_attack: MitreAttack;
+  // Null on records anchored on Microsoft K8s techniques that have no MITRE
+  // counterpart (e.g., MS-TA9041 Collecting Data from Pod).
+  mitre_attack: MitreAttack | null;
   microsoft_k8s_matrix: MicrosoftK8sMatrix;
   data_components: DataComponent[];
   detection_strategies?: DetectionStrategy[];

@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9011",
+  "title": "Sidecar Injection",
+  "description": "A Kubernetes Pod is a group of one or more containers with shared storage and network resources. Sidecar container is a term that is used to describe an additional container that resides alongside the main container. For example, service-mesh proxies are operating as sidecars in the applications\u2019 pods. Attackers can run their code and hide their activity by injecting a sidecar container to a legitimate pod in the cluster instead of running their own separated pod in the cluster.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1610",
+    "name": "Deploy Container",
+    "tactics": [
+      "execution",
+      "defense_evasion"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1610/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9011",
+    "name": "Sidecar Injection",
+    "tactic": "execution",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Sidecar%20Injection/",
+    "description": "A Kubernetes Pod is a group of one or more containers with shared storage and network resources. Sidecar container is a term that is used to describe an additional container that resides alongside the main container. For example, service-mesh proxies are operating as sidecars in the applications\u2019 pods. Attackers can run their code and hide their activity by injecting a sidecar container to a legitimate pod in the cluster instead of running their own separated pod in the cluster."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Sidecar%20Injection/",
+    "https://attack.mitre.org/techniques/T1610/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

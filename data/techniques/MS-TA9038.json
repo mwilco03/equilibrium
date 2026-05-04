@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9038",
+  "title": "Data destruction",
+  "description": "Attackers may attempt to destroy data and resources in the cluster. This includes deleting deployments, configurations, storage, and compute resources.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1485",
+    "name": "Data Destruction",
+    "tactics": [
+      "impact"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1485/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9038",
+    "name": "Data destruction",
+    "tactic": "impact",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Data%20destruction/",
+    "description": "Attackers may attempt to destroy data and resources in the cluster. This includes deleting deployments, configurations, storage, and compute resources."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Data%20destruction/",
+    "https://attack.mitre.org/techniques/T1485/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

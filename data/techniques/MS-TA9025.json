@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9025",
+  "title": "List K8S secrets",
+  "description": "A Kubernetes secret is an object that lets users store and manage sensitive information, such as passwords and connection strings in the cluster. Secrets can be consumed by reference in the pod configuration. Attackers who have permissions to retrieve the secrets from the API server (by using the pod service account, for example) can access sensitive information that might include credentials to various services.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1552.007",
+    "name": "MITRE T1552.007",
+    "tactics": [
+      "credential_access"
+    ],
+    "sub_technique_of": "T1552",
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1552/007/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9025",
+    "name": "List K8S secrets",
+    "tactic": "credential_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/List%20K8S%20secrets/",
+    "description": "A Kubernetes secret is an object that lets users store and manage sensitive information, such as passwords and connection strings in the cluster. Secrets can be consumed by reference in the pod configuration. Attackers who have permissions to retrieve the secrets from the API server (by using the pod service account, for example) can access sensitive information that might include credentials to various services."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/List%20K8S%20secrets/",
+    "https://attack.mitre.org/techniques/T1552/",
+    "https://attack.mitre.org/techniques/T1552/007/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

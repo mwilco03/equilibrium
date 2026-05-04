@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9004",
+  "title": "Application Vulnerability",
+  "description": "Running a public-facing vulnerable application in a cluster can enable initial access to the cluster. A container that runs an application that is vulnerable to remote code execution vulnerability (RCE) may be exploited. If service account is mounted to the container (default behavior in Kubernetes), the attacker will be able to send requests to the API server using this service account credentials.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1190",
+    "name": "Exploit Public-Facing Application",
+    "tactics": [
+      "initial_access"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1190/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9004",
+    "name": "Application Vulnerability",
+    "tactic": "initial_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20Vulnerability/",
+    "description": "Running a public-facing vulnerable application in a cluster can enable initial access to the cluster. A container that runs an application that is vulnerable to remote code execution vulnerability (RCE) may be exploited. If service account is mounted to the container (default behavior in Kubernetes), the attacker will be able to send requests to the API server using this service account credentials."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20Vulnerability/",
+    "https://attack.mitre.org/techniques/T1190/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

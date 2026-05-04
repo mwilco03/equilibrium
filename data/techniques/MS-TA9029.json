@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9029",
+  "title": "Access the K8S API server",
+  "description": "The Kubernetes API server is the gateway to the cluster. Actions in the cluster are performed by sending various requests to the RESTful API. The status of the cluster, which includes all the components that are deployed on it, can be retrieved by the API server. Attackers may send API requests to probe the cluster and get information about containers, secrets, and other resources in the cluster.  In addition, the Kubernetes API server can also be used to query information about Role Based Access (RBAC) information such as Roles, ClusterRoles, RoleBinding, ClusterRoleBinding and Service Accounts. Attacker may use this information to discover permissions and access associated with Service Accounts in the cluster and use this information to progress towards its attack objectives.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1613",
+    "name": "Container and Resource Discovery",
+    "tactics": [
+      "discovery"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1613/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9029",
+    "name": "Access the K8S API server",
+    "tactic": "discovery",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20the%20K8S%20API%20server/",
+    "description": "The Kubernetes API server is the gateway to the cluster. Actions in the cluster are performed by sending various requests to the RESTful API. The status of the cluster, which includes all the components that are deployed on it, can be retrieved by the API server. Attackers may send API requests to probe the cluster and get information about containers, secrets, and other resources in the cluster.  In addition, the Kubernetes API server can also be used to query information about Role Based Access (RBAC) information such as Roles, ClusterRoles, RoleBinding, ClusterRoleBinding and Service Accounts. Attacker may use this information to discover permissions and access associated with Service Accounts in the cluster and use this information to progress towards its attack objectives."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20the%20K8S%20API%20server/",
+    "https://attack.mitre.org/techniques/T1613/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

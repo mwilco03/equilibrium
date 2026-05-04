@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9018",
+  "title": "Privileged container",
+  "description": "A privileged container is a container that has all the capabilities of the host machine, which lifts all the limitations regular containers have. Practically, this means that privileged containers can do almost every action that can be performed directly on the host. Attackers who gain access to a privileged container, or have permissions to create a new privileged container (by using the compromised pod\u2019s service account, for example), can get access to the host\u2019s resources.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1610",
+    "name": "Deploy Container",
+    "tactics": [
+      "execution",
+      "defense_evasion"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1610/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9018",
+    "name": "Privileged container",
+    "tactic": "privilege_escalation",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Privileged%20container/",
+    "description": "A privileged container is a container that has all the capabilities of the host machine, which lifts all the limitations regular containers have. Practically, this means that privileged containers can do almost every action that can be performed directly on the host. Attackers who gain access to a privileged container, or have permissions to create a new privileged container (by using the compromised pod\u2019s service account, for example), can get access to the host\u2019s resources."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Privileged%20container/",
+    "https://attack.mitre.org/techniques/T1610/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

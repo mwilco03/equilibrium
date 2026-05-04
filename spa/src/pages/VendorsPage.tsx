@@ -58,11 +58,12 @@ export function VendorsPage() {
                 {r.detections.map(({ t, vd }, i) => (
                   <li key={`${t.id}-${i}`}>
                     <Link
-                      to={`/techniques/${t.mitre_attack.technique_id}`}
+                      to={`/techniques/${t.id}`}
                       className="flex flex-col rounded px-2 py-1 hover:bg-zinc-800"
                     >
                       <span className="font-mono text-xs text-zinc-500">
-                        {t.mitre_attack.technique_id}
+                        {t.microsoft_k8s_matrix.id ?? t.id}
+                        {t.mitre_attack ? ` · ${t.mitre_attack.technique_id}` : ""}
                       </span>
                       <span>{vd.title}</span>
                     </Link>

@@ -1,0 +1,32 @@
+{
+  "id": "EQ-MS-TA9010",
+  "title": "SSH server running inside container",
+  "description": "SSH server that is running inside a container may be used by attackers. If attackers gain valid credentials to a container, whether by brute force attempts or by other methods (such as phishing), they can use it to get remote access to the container by SSH.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": null,
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9010",
+    "name": "SSH server running inside container",
+    "tactic": "execution",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/SSH%20server%20running%20inside%20container/",
+    "description": "SSH server that is running inside a container may be used by attackers. If attackers gain valid credentials to a container, whether by brute force attempts or by other methods (such as phishing), they can use it to get remote access to the container by SSH."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/SSH%20server%20running%20inside%20container/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

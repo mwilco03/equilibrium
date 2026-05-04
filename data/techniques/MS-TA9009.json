@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9009",
+  "title": "Application Exploit (RCE)",
+  "description": "An application that is deployed in the cluster and is vulnerable to a remote code execution vulnerability, or a vulnerability that eventually allows code execution, enables attackers to run code in the cluster. If service account is mounted to the container (default behavior in Kubernetes), the attacker will be able to send requests to the API server using this service account credentials.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1190",
+    "name": "Exploit Public-Facing Application",
+    "tactics": [
+      "initial_access"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1190/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9009",
+    "name": "Application Exploit (RCE)",
+    "tactic": "execution",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20Exploit%20%28RCE%29/",
+    "description": "An application that is deployed in the cluster and is vulnerable to a remote code execution vulnerability, or a vulnerability that eventually allows code execution, enables attackers to run code in the cluster. If service account is mounted to the container (default behavior in Kubernetes), the attacker will be able to send requests to the API server using this service account credentials."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20Exploit%20%28RCE%29/",
+    "https://attack.mitre.org/techniques/T1190/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

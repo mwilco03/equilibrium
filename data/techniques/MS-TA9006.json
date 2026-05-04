@@ -1,18 +1,28 @@
 {
-  "id": "EQ-T1609",
+  "id": "EQ-MS-TA9006",
   "title": "Container Administration Command",
   "description": "An adversary uses a container administration service (the Kubernetes API server, kubelet, Docker daemon, or an in-cluster admission proxy) to execute a command inside a running container. The canonical surface is `kubectl exec` / `oc exec` / Kubernetes API `POST /api/v1/namespaces/{ns}/pods/{pod}/exec`, and equivalents on the kubelet (`/exec`, `/run`) and on Docker (`docker exec`). Detection is anchored on the API audit trail and on the resulting in-container process lineage.",
-  "tags": ["kubernetes", "containers", "execution", "kubectl-exec", "docker-exec"],
+  "tags": [
+    "kubernetes",
+    "containers",
+    "execution",
+    "kubectl-exec",
+    "docker-exec"
+  ],
   "mitre_attack": {
     "technique_id": "T1609",
     "name": "Container Administration Command",
-    "tactics": ["execution"],
+    "tactics": [
+      "execution"
+    ],
     "sub_technique_of": null,
-    "platforms": ["Containers"],
+    "platforms": [
+      "Containers"
+    ],
     "url": "https://attack.mitre.org/techniques/T1609/"
   },
   "microsoft_k8s_matrix": {
-    "id": null,
+    "id": "MS-TA9006",
     "name": "Exec into container",
     "tactic": "execution",
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/",
@@ -116,7 +126,9 @@
         "Wiz Kubernetes audit log connector enabled on each cluster",
         "API server audit policy with Metadata level (or higher) on pods/exec"
       ],
-      "mapped_data_components": ["Application Log Content"],
+      "mapped_data_components": [
+        "Application Log Content"
+      ],
       "confidence": "high",
       "false_positive_considerations": "Break-glass operators and incident responders will appear here. Maintain the allowlist as an enum, not a literal list inline.",
       "limitations": "Does not see the command actually run inside the container if the audit policy does not capture requestObject for exec. Pair with a runtime-level rule for that.",
@@ -135,7 +147,10 @@
         "Upwind Kubernetes audit log enrichment enabled so process events carry the originating API principal (input.identity.k8s_user / k8s_serviceaccount)",
         "Upwind Explorer custom-policy authoring access for the tenant"
       ],
-      "mapped_data_components": ["Process Creation", "Command Execution"],
+      "mapped_data_components": [
+        "Process Creation",
+        "Command Execution"
+      ],
       "confidence": "high",
       "false_positive_considerations": "Liveness/readiness probes that shell into the container are legitimate exec ancestry. Allowlist by kubelet probe principal or by container-and-cmdline pair, not by process name.",
       "limitations": "Authoring custom Rego policies against Upwind Explorer requires access to Upwind's documentation center, which is login-gated. The field names above follow public marketing/blog references and may need adjustment against the actual tenant schema.",
@@ -154,7 +169,9 @@
         "Kubernetes audit logs shipped to Snowflake (e.g., via Fluent Bit -> S3 -> Snowpipe)",
         "K8S_AUDIT.REF.EXEC_PRINCIPAL_ALLOWLIST reference table populated and reviewed quarterly"
       ],
-      "mapped_data_components": ["Application Log Content"],
+      "mapped_data_components": [
+        "Application Log Content"
+      ],
       "confidence": "medium",
       "false_positive_considerations": "Latency between event and table can mask live incidents; pair with a streaming alerting tier for time-sensitive use.",
       "limitations": "Sees only what made it into the audit policy; does not see in-container process events unless a runtime sensor's events are also landed in the lake.",
@@ -174,6 +191,8 @@
     "schema_version": "0.1.0",
     "created": "2026-05-04",
     "updated": "2026-05-04",
-    "contributors": ["equilibrium-bootstrap"]
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
   }
 }

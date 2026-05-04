@@ -1,15 +1,17 @@
 import { Link } from "react-router-dom";
 import {
-  TACTICS,
+  MS_K8S_TACTICS,
   VENDORS,
-  type MitreTactic,
+  type MicrosoftK8sTactic,
   type TechniqueRecord,
   type Vendor,
 } from "@/types/equilibrium";
 
-const TACTIC_LABELS: Record<MitreTactic, string> = {
-  reconnaissance: "Reconnaissance",
-  resource_development: "Resource Dev",
+// The matrix is grouped by the Microsoft K8s Threat Matrix tactic, since
+// equilibrium is keyed on MS K8s technique IDs and that gives every record
+// exactly one column. The MITRE tactic appears as enrichment on the card,
+// not as the structural axis.
+const MS_K8S_TACTIC_LABELS: Record<MicrosoftK8sTactic, string> = {
   initial_access: "Initial Access",
   execution: "Execution",
   persistence: "Persistence",
@@ -19,13 +21,9 @@ const TACTIC_LABELS: Record<MitreTactic, string> = {
   discovery: "Discovery",
   lateral_movement: "Lateral Movement",
   collection: "Collection",
-  command_and_control: "C2",
-  exfiltration: "Exfiltration",
   impact: "Impact",
 };
 
-// Three-letter vendor abbreviations for the matrix card pills. Keeping the
-// mapping centralized so other surfaces (search facets, tooltips) can reuse it.
 const VENDOR_ABBR: Record<Vendor, string> = {
   wiz: "WIZ",
   upwind: "UPW",
@@ -43,28 +41,22 @@ interface Props {
 }
 
 export function MatrixGrid({ techniques }: Props) {
-  // Group techniques by primary MITRE tactic. A technique that lists multiple
-  // tactics appears in each column (mirrors ATT&CK Navigator behavior).
-  const byTactic = new Map<MitreTactic, TechniqueRecord[]>();
-  for (const tactic of TACTICS) byTactic.set(tactic, []);
+  const byTactic = new Map<MicrosoftK8sTactic, TechniqueRecord[]>();
+  for (const tactic of MS_K8S_TACTICS) byTactic.set(tactic, []);
   for (const t of techniques) {
-    for (const tactic of t.mitre_attack.tactics) {
-      byTactic.get(tactic)?.push(t);
-    }
+    byTactic.get(t.microsoft_k8s_matrix.tactic)?.push(t);
   }
 
-  // Hide empty tactics so a small dataset does not render a wall of empty
-  // columns. As the dataset grows this becomes a no-op.
-  const populated = TACTICS.filter((tac) => (byTactic.get(tac)?.length ?? 0) > 0);
+  const populated = MS_K8S_TACTICS.filter(
+    (tac) => (byTactic.get(tac)?.length ?? 0) > 0,
+  );
 
   return (
     <div className="overflow-x-auto">
       <div
         // Phone (default): one tactic per row stacked vertically.
-        // Tablet+ (`sm:`): ATT&CK Navigator-style grid, horizontal scroll if
-        // the columns exceed the viewport. CSS grid ignores
-        // `grid-template-columns` when display isn't grid, so the same node
-        // works in both modes.
+        // Tablet+ (`sm:`): MS K8s matrix-style grid, horizontal scroll if
+        // the columns exceed the viewport.
         className="flex flex-col gap-4 p-3 sm:grid sm:min-w-max sm:gap-2 sm:p-4"
         style={{
           gridTemplateColumns: `repeat(${populated.length}, minmax(220px, 1fr))`,
@@ -76,13 +68,13 @@ export function MatrixGrid({ techniques }: Props) {
               className="sticky top-0 z-10 rounded-t bg-zinc-900 px-3 py-2 text-xs font-semibold uppercase tracking-wide"
               style={{ borderBottom: `2px solid var(--tactic-${tactic})` }}
             >
-              {TACTIC_LABELS[tactic]}
+              {MS_K8S_TACTIC_LABELS[tactic]}
               <span className="ml-2 text-zinc-500">
                 {byTactic.get(tactic)?.length ?? 0}
               </span>
             </div>
             {(byTactic.get(tactic) ?? []).map((t) => (
-              <TechniqueCard key={t.id + tactic} t={t} />
+              <TechniqueCard key={t.id} t={t} />
             ))}
           </div>
         ))}
@@ -95,17 +87,32 @@ function TechniqueCard({ t }: { t: TechniqueRecord }) {
   const presentVendors = new Set<Vendor>(
     (t.vendor_detections ?? []).map((vd) => vd.vendor),
   );
+  const dcCount = t.data_components.length;
+  const isStub = dcCount === 0 && (t.vendor_detections ?? []).length === 0;
 
   return (
     <Link
-      to={`/techniques/${t.mitre_attack.technique_id}`}
-      className="rounded border border-zinc-800 bg-zinc-900/60 p-3 text-sm hover:border-cyan-500 hover:bg-zinc-900"
+      to={`/techniques/${t.id}`}
+      className={
+        "flex flex-col rounded border bg-zinc-900/60 p-3 text-sm hover:bg-zinc-900 " +
+        (isStub
+          ? "border-dashed border-zinc-700 hover:border-zinc-500"
+          : "border-zinc-800 hover:border-cyan-500")
+      }
     >
-      <div className="font-mono text-xs text-zinc-500">
-        {t.mitre_attack.technique_id}
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <span className="font-mono">{t.microsoft_k8s_matrix.id ?? t.id}</span>
+        {t.mitre_attack ? (
+          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-400">
+            {t.mitre_attack.technique_id}
+          </span>
+        ) : (
+          <span className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] text-amber-300">
+            no MITRE map
+          </span>
+        )}
       </div>
-      <div className="font-medium">{t.title}</div>
-      <div className="mt-1 text-xs text-zinc-400">MS: {t.microsoft_k8s_matrix.name}</div>
+      <div className="mt-1 font-medium">{t.title}</div>
 
       <div className="mt-2 flex flex-wrap gap-1">
         {t.data_components.slice(0, 3).map((dc) => (
@@ -116,9 +123,12 @@ function TechniqueCard({ t }: { t: TechniqueRecord }) {
             {dc.name}
           </span>
         ))}
-        {t.data_components.length > 3 ? (
-          <span className="text-[10px] text-zinc-500">
-            +{t.data_components.length - 3}
+        {dcCount > 3 ? (
+          <span className="text-[10px] text-zinc-500">+{dcCount - 3}</span>
+        ) : null}
+        {dcCount === 0 ? (
+          <span className="text-[10px] italic text-zinc-600">
+            no data components yet
           </span>
         ) : null}
       </div>

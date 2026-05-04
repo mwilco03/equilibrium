@@ -25,10 +25,10 @@ for (const f of files) {
 
   docs.push({
     id: r.id,
-    technique_id: r.mitre_attack.technique_id,
+    technique_id: r.mitre_attack?.technique_id ?? r.microsoft_k8s_matrix?.id ?? r.id,
     title: r.title,
     description: r.description,
-    tactic: (r.mitre_attack.tactics ?? []).join(","),
+    tactic: (r.mitre_attack?.tactics ?? []).join(","),
     ms_tactic: r.microsoft_k8s_matrix?.tactic ?? "",
     ms_name: r.microsoft_k8s_matrix?.name ?? "",
     vendors: (r.vendor_detections ?? []).map((vd) => vd.vendor),

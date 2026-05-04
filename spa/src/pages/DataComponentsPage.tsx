@@ -84,10 +84,10 @@ export function DataComponentsPage() {
                 {r.references.map((t) => (
                   <li key={t.id}>
                     <Link
-                      to={`/techniques/${t.mitre_attack.technique_id}`}
+                      to={`/techniques/${t.id}`}
                       className="rounded bg-zinc-800 px-2 py-0.5 text-xs text-cyan-300 hover:bg-zinc-700"
                     >
-                      {t.mitre_attack.technique_id} {t.title}
+                      {t.microsoft_k8s_matrix.id ?? t.id} {t.title}
                     </Link>
                   </li>
                 ))}

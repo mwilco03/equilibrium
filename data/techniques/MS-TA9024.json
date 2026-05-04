@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9024",
+  "title": "Connect from Proxy server",
+  "description": "Attackers may use proxy servers to hide their origin IP. Specifically, attackers often use anonymous networks such as TOR for their activity. This can be used for communicating with the applications themselves or with the API server.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1090",
+    "name": "MITRE T1090",
+    "tactics": [
+      "defense_evasion"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1090/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9024",
+    "name": "Connect from Proxy server",
+    "tactic": "defense_evasion",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Connect%20from%20Proxy%20server/",
+    "description": "Attackers may use proxy servers to hide their origin IP. Specifically, attackers often use anonymous networks such as TOR for their activity. This can be used for communicating with the applications themselves or with the API server."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Connect%20from%20Proxy%20server/",
+    "https://attack.mitre.org/techniques/T1090/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

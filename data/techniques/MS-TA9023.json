@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9023",
+  "title": "Pod or container name similarily",
+  "description": "Pods that are created by controllers such as Deployment or DaemonSet have random suffix in their names. Attackers can use this fact and name their backdoor pods as they were created by the existing controllers. For example, an attacker could create a malicious pod named coredns-{random suffix} which would look related to the CoreDNS Deployment.  Also, attackers can deploy their containers in the kube-system namespace where the administrative containers reside.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1036.005",
+    "name": "MITRE T1036.005",
+    "tactics": [
+      "defense_evasion"
+    ],
+    "sub_technique_of": "T1036",
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1036/005/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9023",
+    "name": "Pod or container name similarily",
+    "tactic": "defense_evasion",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Pod%20or%20container%20name%20similarily/",
+    "description": "Pods that are created by controllers such as Deployment or DaemonSet have random suffix in their names. Attackers can use this fact and name their backdoor pods as they were created by the existing controllers. For example, an attacker could create a malicious pod named coredns-{random suffix} which would look related to the CoreDNS Deployment.  Also, attackers can deploy their containers in the kube-system namespace where the administrative containers reside."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Pod%20or%20container%20name%20similarily/",
+    "https://attack.mitre.org/techniques/T1036/",
+    "https://attack.mitre.org/techniques/T1036/005/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

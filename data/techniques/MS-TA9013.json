@@ -1,20 +1,30 @@
 {
-  "id": "EQ-T1611",
+  "id": "EQ-MS-TA9013",
   "title": "Escape to Host",
   "description": "An adversary breaks out of a container's isolation boundary to gain access to the underlying host kernel and filesystem. In Kubernetes, the highest-frequency primitives are: a privileged pod (capabilities give the container kernel-level reach), a hostPath mount that exposes the host filesystem (or the docker.sock or kubelet credentials) into the container, sharing the host PID/Network/IPC namespace, or abusing CRI-internal sockets. Detection is anchored on the pod spec (declared intent), the runtime sensor (observed escape syscalls and namespace transitions), and the API audit log (the principal that created the offending pod).",
-  "tags": ["kubernetes", "containers", "privilege-escalation", "container-escape", "hostpath"],
+  "tags": [
+    "kubernetes",
+    "containers",
+    "privilege-escalation",
+    "container-escape",
+    "hostpath"
+  ],
   "mitre_attack": {
     "technique_id": "T1611",
     "name": "Escape to Host",
-    "tactics": ["privilege_escalation"],
+    "tactics": [
+      "privilege_escalation"
+    ],
     "sub_technique_of": null,
-    "platforms": ["Containers"],
+    "platforms": [
+      "Containers"
+    ],
     "url": "https://attack.mitre.org/techniques/T1611/"
   },
   "microsoft_k8s_matrix": {
-    "id": null,
+    "id": "MS-TA9013",
     "name": "Writable hostPath mount",
-    "tactic": "privilege_escalation",
+    "tactic": "persistence",
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Writable%20hostPath%20mount/",
     "description": "A container with a writable hostPath mount (or, equivalently, a privileged container with host namespace sharing) can read and modify host filesystem state, container runtime sockets, and kubelet credentials, leading to host-level execution."
   },
@@ -81,21 +91,33 @@
       "name": "Container escape via bind mounts, privileged containers, and runtime-socket abuse",
       "summary": "Correlate the pod spec (declared escape primitives) with runtime evidence (syscall transitions, file writes to host paths, exec against runtime sockets). A high-fidelity alert requires both: a privileged or hostPath-bound pod is the precondition; the syscall or socket-abuse event is the consummation.",
       "url": "https://attack.mitre.org/techniques/T1611/",
-      "data_component_refs": ["Container Creation", "Process Creation", "OS API Execution", "File Modification"]
+      "data_component_refs": [
+        "Container Creation",
+        "Process Creation",
+        "OS API Execution",
+        "File Modification"
+      ]
     },
     {
       "id": "AN0612",
       "name": "Bind-mount, privileged, or docker.sock-based escape",
       "summary": "Container escape attempts via hostPath bind mounts, privileged containers, or interaction with the container runtime socket from inside a container.",
       "url": "https://attack.mitre.org/techniques/T1611/",
-      "data_component_refs": ["Container Creation", "Process Creation", "File Modification"]
+      "data_component_refs": [
+        "Container Creation",
+        "Process Creation",
+        "File Modification"
+      ]
     },
     {
       "id": "AN0613",
       "name": "Linux container escape via syscalls",
       "summary": "Direct syscall-level escape: unshare, keyctl, mount, pivot_root invoked from inside a container PID namespace.",
       "url": "https://attack.mitre.org/techniques/T1611/",
-      "data_component_refs": ["OS API Execution", "Process Creation"]
+      "data_component_refs": [
+        "OS API Execution",
+        "Process Creation"
+      ]
     }
   ],
   "vendor_detections": [
@@ -110,11 +132,15 @@
         "Audit policy at RequestResponse level on pods so requestObject is captured",
         "Constants for sensitivePaths and dangerousCaps maintained as enums, not inlined per-query"
       ],
-      "mapped_data_components": ["Container Creation"],
+      "mapped_data_components": [
+        "Container Creation"
+      ],
       "confidence": "high",
       "false_positive_considerations": "CNI/CSI/node-exporter DaemonSets legitimately need many of these primitives. Maintain an exception list keyed by service account, not by image.",
       "limitations": "Pre-runtime only: this catches the declaration of the primitive, not the actual escape. Pair with the Falco rule below.",
-      "references": ["https://kubernetes.io/docs/concepts/policy/pod-security-admission/"]
+      "references": [
+        "https://kubernetes.io/docs/concepts/policy/pod-security-admission/"
+      ]
     },
     {
       "vendor": "sysdig",
@@ -127,7 +153,10 @@
         "Modern syscall driver (eBPF-CO-RE) loaded so namespace fields are populated",
         "container_escape_binaries and runtime_sockets lists kept in version control"
       ],
-      "mapped_data_components": ["Process Creation", "File Modification"],
+      "mapped_data_components": [
+        "Process Creation",
+        "File Modification"
+      ],
       "confidence": "high",
       "false_positive_considerations": "Service mesh sidecars and node-problem-detector occasionally exec nsenter against their own namespaces; allowlist by image+command, not by name alone.",
       "limitations": "Direct syscalls (unshare, setns, mount) bypass the binary-name rule. Add a syscall-shape rule that targets the syscall directly when feasible (eBPF profiles).",
@@ -148,7 +177,11 @@
         "Kubernetes correlation enabled to attribute input.container.id back to a workload",
         "Upwind Explorer custom-policy authoring access for the tenant"
       ],
-      "mapped_data_components": ["OS API Execution", "Process Creation", "File Modification"],
+      "mapped_data_components": [
+        "OS API Execution",
+        "Process Creation",
+        "File Modification"
+      ],
       "confidence": "high",
       "false_positive_considerations": "Some CNI plugins legitimately call setns to set up pod networking; suppress by pod label or DaemonSet identity rather than by syscall name.",
       "limitations": "Requires a kernel new enough for the eBPF probe set; older nodes (RHEL 7-class) cannot supply this telemetry, fall back to the Falco rule there. The Upwind Explorer schema referenced above follows public docs/blog patterns and may need adjustment against the actual tenant schema.",
@@ -169,6 +202,8 @@
     "schema_version": "0.1.0",
     "created": "2026-05-04",
     "updated": "2026-05-04",
-    "contributors": ["equilibrium-bootstrap"]
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
   }
 }

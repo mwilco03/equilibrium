@@ -259,7 +259,6 @@
     "id",
     "title",
     "description",
-    "mitre_attack",
     "microsoft_k8s_matrix",
     "data_components",
     "detection_strategies",
@@ -269,8 +268,8 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^EQ-T\\d{4}(\\.\\d{3})?$",
-      "description": "Equilibrium record ID. Mirrors the anchored MITRE technique (e.g., EQ-T1609)."
+      "pattern": "^EQ-(T\\d{4}(\\.\\d{3})?|MS-TA\\d{4})$",
+      "description": "Equilibrium record ID. Two legal forms: 'EQ-T<id>' for records anchored on a unique MITRE technique (e.g., EQ-T1609), and 'EQ-MS-TA<id>' for records anchored on a Microsoft K8s Threat Matrix technique (used when multiple MS techniques map to one MITRE technique, or when the MS technique has no MITRE mapping)."
     },
     "title": { "type": "string" },
     "description": { "type": "string" },
@@ -278,13 +277,18 @@
       "type": "array",
       "items": { "type": "string" }
     },
-    "mitre_attack": { "$ref": "#/$defs/MitreAttack" },
+    "mitre_attack": {
+      "anyOf": [
+        { "$ref": "#/$defs/MitreAttack" },
+        { "type": "null" }
+      ],
+      "description": "MITRE ATT&CK mapping. Null when the Microsoft K8s technique has no MITRE counterpart (4 such cases in the matrix as of 2026-05-04: Collecting Data from Pod, Kubeconfig file, SSH server running inside container, Static Pods)."
+    },
     "microsoft_k8s_matrix": { "$ref": "#/$defs/MicrosoftK8sMatrix" },
     "data_components": {
       "type": "array",
-      "minItems": 1,
       "items": { "$ref": "#/$defs/DataComponent" },
-      "description": "Primary anchor. Every vendor detection must reference at least one entry here by name."
+      "description": "Primary anchor when populated: every vendor detection must reference at least one entry here by name. Empty array is permitted on stub records that have not yet been researched; CI's data-component cross-reference check will block any vendor_detection that references a name not in this array."
     },
     "detection_strategies": {
       "type": "array",

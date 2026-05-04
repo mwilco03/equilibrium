@@ -1,0 +1,45 @@
+{
+  "id": "EQ-MS-TA9028",
+  "title": "Access managed identity credentials",
+  "description": "Managed identities are identities that are managed by the cloud provider and can be allocated to cloud resources, such as virtual machines. Those identities are used to authenticate with cloud services. The identity\u2019s secret is fully managed by the cloud provider, which eliminates the need to manage the credentials. Applications can obtain the identity\u2019s token by accessing the Instance Metadata Service (IMDS). Attackers who get access to a Kubernetes pod can leverage their access to the IMDS endpoint to get the managed identity\u2019s token. With a token, the attackers can access cloud resources.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1552.005",
+    "name": "Cloud Instance Metadata API",
+    "tactics": [
+      "credential_access"
+    ],
+    "sub_technique_of": "T1552",
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1552/005/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9028",
+    "name": "Access managed identity credentials",
+    "tactic": "credential_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20managed%20identity%20credentials/",
+    "description": "Managed identities are identities that are managed by the cloud provider and can be allocated to cloud resources, such as virtual machines. Those identities are used to authenticate with cloud services. The identity\u2019s secret is fully managed by the cloud provider, which eliminates the need to manage the credentials. Applications can obtain the identity\u2019s token by accessing the Instance Metadata Service (IMDS). Attackers who get access to a Kubernetes pod can leverage their access to the IMDS endpoint to get the managed identity\u2019s token. With a token, the attackers can access cloud resources."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20managed%20identity%20credentials/",
+    "https://attack.mitre.org/techniques/T1552/",
+    "https://attack.mitre.org/techniques/T1552/005/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}

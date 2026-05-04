@@ -1,18 +1,29 @@
 {
-  "id": "EQ-T1610",
+  "id": "EQ-MS-TA9008",
   "title": "Deploy Container",
   "description": "An adversary deploys a new container into a Kubernetes cluster (or directly onto a container runtime) to achieve execution, evade endpoint controls that gate pod creation, or sidestep image-allowlist policy. The canonical surface is the Kubernetes API server's create verb against pods, deployments, daemonsets, jobs, or cronjobs, and equivalents on the kubelet (`/run`) and the Docker daemon (`docker run`).",
-  "tags": ["kubernetes", "containers", "execution", "pod-create", "docker-run"],
+  "tags": [
+    "kubernetes",
+    "containers",
+    "execution",
+    "pod-create",
+    "docker-run"
+  ],
   "mitre_attack": {
     "technique_id": "T1610",
     "name": "Deploy Container",
-    "tactics": ["execution", "defense_evasion"],
+    "tactics": [
+      "execution",
+      "defense_evasion"
+    ],
     "sub_technique_of": null,
-    "platforms": ["Containers"],
+    "platforms": [
+      "Containers"
+    ],
     "url": "https://attack.mitre.org/techniques/T1610/"
   },
   "microsoft_k8s_matrix": {
-    "id": null,
+    "id": "MS-TA9008",
     "name": "New Container",
     "tactic": "execution",
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/New%20Container/",
@@ -88,7 +99,11 @@
       "name": "API-driven container creation with risky attributes",
       "summary": "API-initiated pod creation by a non-admin principal using non-allowlisted images or risky runtime attributes (privileged mode, host namespaces, sensitive mounts, capability adds).",
       "url": "https://attack.mitre.org/techniques/T1610/",
-      "data_component_refs": ["Application Log Content", "Container Creation", "Image Metadata"]
+      "data_component_refs": [
+        "Application Log Content",
+        "Container Creation",
+        "Image Metadata"
+      ]
     }
   ],
   "vendor_detections": [
@@ -111,7 +126,9 @@
       "confidence": "high",
       "false_positive_considerations": "Privileged DaemonSets that ship with managed Kubernetes (CNI agents, CSI drivers, node-exporter) appear here. Maintain an exception list keyed by service account, not by image string.",
       "limitations": "Does not see pods created directly via the kubelet's static pod manifest path or via Docker daemon out-of-band. Pair with a runtime sensor for those.",
-      "references": ["https://kubernetes.io/docs/concepts/policy/pod-security-admission/"]
+      "references": [
+        "https://kubernetes.io/docs/concepts/policy/pod-security-admission/"
+      ]
     },
     {
       "vendor": "sysdig",
@@ -124,7 +141,10 @@
         "Kubernetes API server configured to forward audit events to Falco's webhook",
         "Audit policy capturing requestObject at RequestResponse level for pods"
       ],
-      "mapped_data_components": ["Application Log Content", "Container Creation"],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Container Creation"
+      ],
       "confidence": "high",
       "false_positive_considerations": "Cluster-managed DaemonSets often legitimately use hostPath and privileged mode. Use Falco's macro/list mechanism to allowlist them by image or service account.",
       "limitations": "Webhook delivery is best-effort; if the audit webhook is rate-limited or dropped, Falco never sees the event.",
@@ -144,11 +164,17 @@
         "K8S_AUDIT.REF.REGISTRY_ALLOWLIST table maintained quarterly",
         "Audit policy at RequestResponse level for pods so request_object is populated"
       ],
-      "mapped_data_components": ["Application Log Content", "Container Creation", "Image Metadata"],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Container Creation",
+        "Image Metadata"
+      ],
       "confidence": "medium",
       "false_positive_considerations": "Legitimate platform DaemonSets will score high on privileged + hostPath. Add a service-account allowlist join, or filter by namespace, before alerting.",
       "limitations": "Lake latency means this is a hunt/triage tool, not a real-time alert. Pair with a streaming rule for the highest-score patterns.",
-      "references": ["https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/"]
+      "references": [
+        "https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/"
+      ]
     }
   ],
   "references": [
@@ -162,6 +188,8 @@
     "schema_version": "0.1.0",
     "created": "2026-05-04",
     "updated": "2026-05-04",
-    "contributors": ["equilibrium-bootstrap"]
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
   }
 }

@@ -1,0 +1,44 @@
+{
+  "id": "EQ-MS-TA9007",
+  "title": "bash or cmd inside container",
+  "description": "Attackers who have permissions to run a cmd/bash script inside a container can use it to execute malicious code and compromise cluster resources.",
+  "tags": [
+    "kubernetes",
+    "stub"
+  ],
+  "mitre_attack": {
+    "technique_id": "T1059",
+    "name": "Command and Scripting Interpreter",
+    "tactics": [
+      "execution"
+    ],
+    "sub_technique_of": null,
+    "platforms": [
+      "Containers"
+    ],
+    "url": "https://attack.mitre.org/techniques/T1059/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": "MS-TA9007",
+    "name": "bash or cmd inside container",
+    "tactic": "execution",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/bash%20or%20cmd%20inside%20container/",
+    "description": "Attackers who have permissions to run a cmd/bash script inside a container can use it to execute malicious code and compromise cluster resources."
+  },
+  "data_components": [],
+  "detection_strategies": [],
+  "vendor_detections": [],
+  "references": [
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/bash%20or%20cmd%20inside%20container/",
+    "https://attack.mitre.org/techniques/T1059/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": [
+      "equilibrium-bootstrap"
+    ]
+  }
+}
