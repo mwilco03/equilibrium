@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/mwilco03/equilibrium/main/schema/equilibrium.schema.json",
+  "title": "Equilibrium Technique Mapping",
+  "description": "Canonical record that joins one Microsoft Kubernetes Threat Matrix technique to its MITRE ATT&CK technique, MITRE Detection Strategies, MITRE Data Components, and normalized vendor detection logic. Data Components are first-class objects and are the primary anchor for all detection authoring.",
+  "type": "object",
+  "$defs": {
+    "Url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "IsoDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "Confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Author's confidence that the detection logic, when run against the required telemetry, will fire on the modeled adversary behavior with acceptable signal-to-noise."
+    },
+    "Vendor": {
+      "type": "string",
+      "enum": [
+        "wiz",
+        "upwind",
+        "lacework",
+        "sysdig",
+        "snowflake",
+        "crowdstrike",
+        "prisma_cloud",
+        "orca",
+        "datadog_cloud_siem"
+      ]
+    },
+    "QueryLanguage": {
+      "type": "string",
+      "enum": [
+        "graphql",
+        "wiz_resource_graph",
+        "lql",
+        "falco_yaml",
+        "sql",
+        "kql",
+        "spl",
+        "eql",
+        "sigma",
+        "osquery",
+        "ebpf_dsl",
+        "json_rule",
+        "yaml_rule"
+      ]
+    },
+    "MitreTactic": {
+      "type": "string",
+      "enum": [
+        "reconnaissance",
+        "resource_development",
+        "initial_access",
+        "execution",
+        "persistence",
+        "privilege_escalation",
+        "defense_evasion",
+        "credential_access",
+        "discovery",
+        "lateral_movement",
+        "collection",
+        "command_and_control",
+        "exfiltration",
+        "impact"
+      ]
+    },
+    "MicrosoftK8sTactic": {
+      "type": "string",
+      "enum": [
+        "initial_access",
+        "execution",
+        "persistence",
+        "privilege_escalation",
+        "defense_evasion",
+        "credential_access",
+        "discovery",
+        "lateral_movement",
+        "collection",
+        "impact"
+      ]
+    },
+    "DataComponent": {
+      "type": "object",
+      "description": "First-class MITRE ATT&CK Data Component. The detection contract is anchored here: every vendor detection must declare which Data Components it satisfies.",
+      "required": ["data_source_id", "data_source_name", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^DC\\d{4}$",
+          "description": "MITRE Data Component identifier (e.g., DC0064). Optional when MITRE has not assigned one."
+        },
+        "name": {
+          "type": "string",
+          "description": "Data Component name (e.g., 'Command Execution')."
+        },
+        "data_source_id": {
+          "type": "string",
+          "pattern": "^DS\\d{4}$",
+          "description": "MITRE Data Source identifier the component belongs to (e.g., DS0017)."
+        },
+        "data_source_name": {
+          "type": "string",
+          "description": "Human-readable Data Source name (e.g., 'Command')."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Authoritative definition copied or paraphrased from MITRE."
+        },
+        "url": { "$ref": "#/$defs/Url" },
+        "relevant_events": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Concrete events or fields a defender would actually observe (e.g., 'Kubernetes audit event verb=create on /pods/*/exec')."
+        }
+      },
+      "additionalProperties": false
+    },
+    "DetectionStrategy": {
+      "type": "object",
+      "description": "MITRE ATT&CK Detection Strategy or analytic referenced by this technique.",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(DET|AN)\\d{4}$",
+          "description": "Detection Strategy (DET####) or Analytic (AN####) identifier."
+        },
+        "name": { "type": "string" },
+        "summary": { "type": "string" },
+        "url": { "$ref": "#/$defs/Url" },
+        "data_component_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Names of Data Components (as they appear in this record) that this strategy depends on."
+        }
+      },
+      "additionalProperties": false
+    },
+    "MitreAttack": {
+      "type": "object",
+      "required": ["technique_id", "name", "tactics", "url"],
+      "properties": {
+        "technique_id": {
+          "type": "string",
+          "pattern": "^T\\d{4}(\\.\\d{3})?$"
+        },
+        "name": { "type": "string" },
+        "tactics": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/MitreTactic" }
+        },
+        "sub_technique_of": {
+          "type": ["string", "null"],
+          "pattern": "^T\\d{4}$"
+        },
+        "platforms": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "url": { "$ref": "#/$defs/Url" }
+      },
+      "additionalProperties": false
+    },
+    "MicrosoftK8sMatrix": {
+      "type": "object",
+      "required": ["name", "tactic"],
+      "properties": {
+        "id": {
+          "type": ["string", "null"],
+          "description": "Microsoft does not consistently publish stable IDs; use null when absent."
+        },
+        "name": { "type": "string" },
+        "tactic": { "$ref": "#/$defs/MicrosoftK8sTactic" },
+        "url": { "$ref": "#/$defs/Url" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "VendorDetection": {
+      "type": "object",
+      "description": "Normalized detection block. Same intent across vendors, different syntax. Every block names the Data Components it satisfies so the matrix can flag coverage gaps.",
+      "required": [
+        "vendor",
+        "language",
+        "title",
+        "intent",
+        "query",
+        "required_telemetry",
+        "mapped_data_components",
+        "confidence"
+      ],
+      "properties": {
+        "vendor": { "$ref": "#/$defs/Vendor" },
+        "language": { "$ref": "#/$defs/QueryLanguage" },
+        "title": { "type": "string" },
+        "intent": {
+          "type": "string",
+          "description": "Vendor-agnostic statement of what the query is trying to catch. Should read identically in spirit across vendor blocks."
+        },
+        "query": {
+          "type": "string",
+          "description": "The actual query, rule, or API payload. Multiline strings are preserved verbatim."
+        },
+        "required_telemetry": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "Vendor-specific telemetry channels that must be enabled (e.g., 'Wiz Kubernetes audit log connector', 'Falco syscall driver', 'Sysdig agent with K8s audit hook')."
+        },
+        "mapped_data_components": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "Names of Data Components (declared in this record's data_components[]) that this detection actually satisfies."
+        },
+        "confidence": { "$ref": "#/$defs/Confidence" },
+        "false_positive_considerations": { "type": "string" },
+        "limitations": { "type": "string" },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Url" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Metadata": {
+      "type": "object",
+      "required": ["version", "created", "updated"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "created": { "$ref": "#/$defs/IsoDate" },
+        "updated": { "$ref": "#/$defs/IsoDate" },
+        "contributors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "description",
+    "mitre_attack",
+    "microsoft_k8s_matrix",
+    "data_components",
+    "detection_strategies",
+    "vendor_detections",
+    "metadata"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^EQ-T\\d{4}(\\.\\d{3})?$",
+      "description": "Equilibrium record ID. Mirrors the anchored MITRE technique (e.g., EQ-T1609)."
+    },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mitre_attack": { "$ref": "#/$defs/MitreAttack" },
+    "microsoft_k8s_matrix": { "$ref": "#/$defs/MicrosoftK8sMatrix" },
+    "data_components": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/DataComponent" },
+      "description": "Primary anchor. Every vendor detection must reference at least one entry here by name."
+    },
+    "detection_strategies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DetectionStrategy" }
+    },
+    "vendor_detections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/VendorDetection" }
+    },
+    "references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Url" }
+    },
+    "metadata": { "$ref": "#/$defs/Metadata" }
+  },
+  "additionalProperties": false
+}

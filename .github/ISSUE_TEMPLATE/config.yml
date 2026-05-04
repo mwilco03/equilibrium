@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Schema reference
+    url: https://github.com/mwilco03/equilibrium/blob/main/schema/equilibrium.schema.json
+    about: Read the canonical schema before submitting.
+  - name: Worked example (T1609)
+    url: https://github.com/mwilco03/equilibrium/blob/main/data/techniques/T1609.json
+    about: A fully populated technique record to model your submission on.

@@ -1,0 +1,47 @@
+name: Validate
+
+on:
+  pull_request:
+    paths:
+      - "data/techniques/**"
+      - "schema/**"
+      - ".github/workflows/validate.yml"
+  push:
+    branches: [main]
+
+jobs:
+  schema:
+    name: JSON Schema validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install ajv-cli
+        run: npm i -g ajv-cli@5 ajv-formats@3
+
+      - name: Validate every technique record
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          fail=0
+          for f in data/techniques/*.json; do
+            echo "::group::$f"
+            if ! ajv validate \
+                --spec=draft2020 \
+                -c ajv-formats \
+                -s schema/equilibrium.schema.json \
+                -d "$f" \
+                --strict=false; then
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$fail"
+
+      - name: Cross-reference data components in vendor detections
+        run: node .github/scripts/check-dc-refs.mjs

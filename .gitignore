@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.cache/
+.parcel-cache/
+.vite/
+.pnpm-store/
+
+# Claude Code project state (private, per-machine)
+.claude/
+.claude-memory/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+spa/dist/
+public/search-index.json

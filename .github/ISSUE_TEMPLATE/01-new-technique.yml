@@ -1,0 +1,140 @@
+name: New technique mapping
+description: Map a new Microsoft Kubernetes Threat Matrix technique to MITRE ATT&CK and propose initial vendor detections.
+title: "[Technique] <MITRE technique ID>: <name>"
+labels: ["submission:technique", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to add a new technique that does not yet have a record under `data/techniques/`.
+        Every field marked required is enforced by the schema. The more you fill in, the closer the auto-generated draft PR will be to mergeable.
+
+  - type: input
+    id: mitre_technique_id
+    attributes:
+      label: MITRE technique ID
+      description: e.g., T1609 or T1611.001 for a sub-technique.
+      placeholder: T1609
+    validations:
+      required: true
+
+  - type: input
+    id: mitre_technique_name
+    attributes:
+      label: MITRE technique name
+      placeholder: Container Administration Command
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mitre_tactic
+    attributes:
+      label: MITRE tactic
+      description: Pick the primary tactic. Multi-tactic techniques can be expanded in the PR.
+      options:
+        - reconnaissance
+        - resource_development
+        - initial_access
+        - execution
+        - persistence
+        - privilege_escalation
+        - defense_evasion
+        - credential_access
+        - discovery
+        - lateral_movement
+        - collection
+        - command_and_control
+        - exfiltration
+        - impact
+    validations:
+      required: true
+
+  - type: input
+    id: ms_k8s_name
+    attributes:
+      label: Microsoft Kubernetes Threat Matrix technique name
+      placeholder: Exec into container
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ms_k8s_tactic
+    attributes:
+      label: Microsoft Kubernetes matrix tactic
+      options:
+        - initial_access
+        - execution
+        - persistence
+        - privilege_escalation
+        - defense_evasion
+        - credential_access
+        - discovery
+        - lateral_movement
+        - collection
+        - impact
+    validations:
+      required: true
+
+  - type: input
+    id: ms_k8s_url
+    attributes:
+      label: Microsoft Kubernetes matrix URL
+      placeholder: https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exec%20into%20container/
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Plain-language summary of what the technique is and how it manifests.
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_components
+    attributes:
+      label: Data Components (one per line)
+      description: |
+        Format: `DS<id> | <Data Source name> | <Data Component name>`. Add as many lines as apply.
+        Example:
+        ```
+        DS0015 | Application Log | Application Log Content
+        DS0017 | Command | Command Execution
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: detection_strategies
+    attributes:
+      label: Detection Strategies (one per line, optional)
+      description: |
+        Format: `DET<id> | <name>` or `AN<id> | <name>`.
+        Example: `DET0065 | Detection Strategy for Container Administration Command Abuse`
+
+  - type: textarea
+    id: vendor_seed
+    attributes:
+      label: Initial vendor detection (optional)
+      description: |
+        Provide one starter detection if you have it; more can be added via the "Add vendor detection" form after merge.
+        Use the schema field names: vendor, language, title, intent, query (fenced code block), required_telemetry, mapped_data_components, confidence.
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: One URL per line. Include the MITRE page, MS matrix page, and any vendor docs.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: acks
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: I have anchored every proposed detection on at least one Data Component listed above.
+          required: true
+        - label: I have searched existing techniques in `data/techniques/` to confirm this is not a duplicate.
+          required: true

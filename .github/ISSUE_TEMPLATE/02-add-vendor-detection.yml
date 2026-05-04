@@ -1,0 +1,125 @@
+name: Add vendor detection
+description: Add a vendor-specific detection block to an existing technique record.
+title: "[Detection] <vendor>: <short summary> (T<id>)"
+labels: ["submission:detection", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to add a single vendor detection block to an existing technique under `data/techniques/`.
+        Every detection must declare which Data Components (already listed on the technique record) it satisfies. If the technique does not yet declare the Data Components you need, file a "Report mapping error" instead.
+
+  - type: input
+    id: technique_id
+    attributes:
+      label: Target technique ID
+      description: The Equilibrium record you are extending. Format `EQ-T<id>` or just the MITRE ID.
+      placeholder: EQ-T1609
+    validations:
+      required: true
+
+  - type: dropdown
+    id: vendor
+    attributes:
+      label: Vendor
+      options:
+        - wiz
+        - upwind
+        - lacework
+        - sysdig
+        - snowflake
+        - crowdstrike
+        - prisma_cloud
+        - orca
+        - datadog_cloud_siem
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Query language
+      options:
+        - graphql
+        - wiz_resource_graph
+        - lql
+        - falco_yaml
+        - sql
+        - kql
+        - spl
+        - eql
+        - sigma
+        - osquery
+        - ebpf_dsl
+        - json_rule
+        - yaml_rule
+    validations:
+      required: true
+
+  - type: input
+    id: title
+    attributes:
+      label: Detection title
+      placeholder: Kubernetes API exec by non-allowlisted principal
+    validations:
+      required: true
+
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: Vendor-agnostic statement of what the query is trying to catch. Should read identically in spirit across vendors.
+    validations:
+      required: true
+
+  - type: textarea
+    id: query
+    attributes:
+      label: Query
+      description: Paste the actual query, rule, or API payload. It will be preserved verbatim.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: required_telemetry
+    attributes:
+      label: Required telemetry (one per line)
+      description: Vendor-specific telemetry channels that must be enabled.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mapped_data_components
+    attributes:
+      label: Mapped Data Components (one per line)
+      description: Names exactly as they appear on the target technique record (e.g., "Command Execution").
+    validations:
+      required: true
+
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: Confidence
+      description: Author confidence that the query, given required telemetry, fires on the modeled behavior with acceptable signal-to-noise.
+      options:
+        - low
+        - medium
+        - high
+    validations:
+      required: true
+
+  - type: textarea
+    id: false_positive_considerations
+    attributes:
+      label: False-positive considerations
+
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Limitations
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References (one URL per line)

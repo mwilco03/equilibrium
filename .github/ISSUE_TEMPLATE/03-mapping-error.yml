@@ -1,0 +1,53 @@
+name: Report mapping error
+description: Report an incorrect data-component mapping, a broken reference, or a stale vendor query.
+title: "[Error] <short summary> (T<id>)"
+labels: ["submission:correction", "needs-triage"]
+body:
+  - type: input
+    id: technique_id
+    attributes:
+      label: Affected technique ID
+      placeholder: EQ-T1609
+    validations:
+      required: true
+
+  - type: dropdown
+    id: error_class
+    attributes:
+      label: Error class
+      options:
+        - data_component_mismatch
+        - missing_data_component
+        - broken_reference_url
+        - stale_vendor_query
+        - incorrect_mitre_or_ms_mapping
+        - schema_violation
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: where
+    attributes:
+      label: Where in the record
+      description: Field path or vendor block. e.g., `vendor_detections[0].query` or `data_components[2]`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_is_wrong
+    attributes:
+      label: What is wrong
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_correction
+    attributes:
+      label: Suggested correction
+      description: If you have one. The maintainer or auto-PR action will use this as the patch starting point.
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Supporting references (one URL per line)

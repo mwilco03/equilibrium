@@ -1,0 +1,66 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: spa/pnpm-lock.yaml
+
+      - name: Install
+        working-directory: spa
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate technique records
+        run: |
+          npm i -g ajv-cli@5 ajv-formats@3
+          for f in data/techniques/*.json; do
+            ajv validate --spec=draft2020 -c ajv-formats \
+              -s schema/equilibrium.schema.json \
+              -d "$f" --strict=false
+          done
+
+      - name: Cross-reference data components
+        run: node .github/scripts/check-dc-refs.mjs
+
+      - name: Build SPA
+        working-directory: spa
+        run: pnpm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: spa/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
