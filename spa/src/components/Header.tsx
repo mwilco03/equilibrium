@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { Search, Github, Grid3x3, Database, ShieldCheck } from "lucide-react";
+import { Search, Github, Grid3x3, Database, ShieldCheck, BarChart3 } from "lucide-react";
 
 const REPO_URL = "https://github.com/mwilco03/equilibrium";
 
@@ -15,6 +15,7 @@ export function Header() {
           <NavItem to="/" label="Matrix" icon={Grid3x3} end />
           <NavItem to="/data-components" label="Data" icon={Database} />
           <NavItem to="/vendors" label="Vendors" icon={ShieldCheck} />
+          <NavItem to="/coverage" label="Coverage" icon={BarChart3} />
           <NavItem to="/search" label="Search" icon={Search} />
         </nav>
         <div className="ml-auto">
