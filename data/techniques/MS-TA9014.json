@@ -78,7 +78,73 @@
       ]
     }
   ],
-  "vendor_detections": [],
+  "vendor_detections": [
+    {
+      "vendor": "wiz",
+      "language": "wiz_resource_graph",
+      "title": "CronJob created or modified by non-CI principal",
+      "intent": "Surface every Kubernetes audit event creating or updating a batch/v1 cronjobs resource. Adversaries plant cron-style persistence because the schedule guarantees re-execution even after the original entry vector is patched.",
+      "query": "// Wiz Threat Center / Kubernetes Audit Log query (Resource Graph style)\nKubernetesAuditLog\n| where verb in (\"create\", \"update\", \"patch\")\n  and objectRef.apiGroup == \"batch\"\n  and objectRef.resource in (\"cronjobs\", \"jobs\")\n| where user.username !in~ (\n    \"system:serviceaccount:argocd:argocd-application-controller\",\n    \"system:serviceaccount:flux-system:source-controller\"\n  )\n| project requestReceivedTimestamp,\n          principal = user.username,\n          namespace = objectRef.namespace,\n          name      = objectRef.name,\n          schedule  = requestObject.spec.schedule,\n          image     = requestObject.spec.jobTemplate.spec.template.spec.containers[0].image\n",
+      "required_telemetry": [
+        "Wiz Kubernetes audit log connector",
+        "Audit policy at RequestResponse for batch/* resources",
+        "CI-principal allowlist maintained centrally"
+      ],
+      "mapped_data_components": [
+        "Scheduled Job Creation",
+        "Scheduled Job Modification",
+        "Application Log Content"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "Backup tooling, certificate-renewal jobs, and metric-collection cron tasks fire here legitimately. Allowlist by namespace+name pattern.",
+      "limitations": "API-server-mediated only. If an adversary writes a static-pod manifest with a sleep loop, this rule does not see it (separate detection on MS-TA9017).",
+      "references": [
+        "https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/"
+      ]
+    },
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: K8s CronJob with non-trivial schedule outside platform namespaces",
+      "intent": "Fire on CronJob creation events where the schedule is unusual (very frequent, e.g. less than 5 minutes) or the namespace is outside the platform set, indicating likely adversary persistence rather than legitimate batch work.",
+      "query": "- macro: frequent_schedule\n  condition: ka.req.cronjob.schedule contains \"*/1 \" or ka.req.cronjob.schedule contains \"*/2 \" or ka.req.cronjob.schedule contains \"* * * * *\"\n\n- list: platform_cronjob_namespaces\n  items: [\"kube-system\", \"cert-manager\", \"velero\", \"backup-system\"]\n\n- rule: Suspicious CronJob Created\n  desc: A K8s CronJob was created with an unusually-frequent schedule, or in a non-platform namespace by a non-CI principal.\n  condition: kevt and kcreate and ka.target.resource=\"cronjobs\"\n             and (frequent_schedule or not (ka.target.namespace in (platform_cronjob_namespaces)))\n  output: >\n    Suspicious CronJob created\n    (user=%ka.user.name name=%ka.target.name ns=%ka.target.namespace\n     schedule=%ka.req.cronjob.schedule images=%ka.req.cronjob.images)\n  priority: WARNING\n  source: k8s_audit\n  tags: [k8s, mitre_persistence, T1053.007]\n",
+      "required_telemetry": [
+        "Falco k8s_audit plugin",
+        "Audit policy capturing requestObject for batch/* at RequestResponse level"
+      ],
+      "mapped_data_components": [
+        "Scheduled Job Creation",
+        "Application Log Content"
+      ],
+      "confidence": "medium",
+      "false_positive_considerations": "Tight-schedule CronJobs are sometimes legitimate (health-check probes implemented as cron). Tune frequent_schedule by environment; consider correlation with image-allowlist.",
+      "limitations": "ka.req.cronjob.* fields require k8saudit plugin v0.5+ and audit policy that captures requestObject for cronjobs.",
+      "references": [
+        "https://falco.org/docs/rules/k8s-audit/",
+        "https://github.com/falcosecurity/plugins/tree/main/plugins/k8saudit"
+      ]
+    },
+    {
+      "vendor": "snowflake",
+      "language": "sql",
+      "title": "CronJob creation hunt with schedule frequency scoring",
+      "intent": "Hunt for CronJob create/update events in the audit log lake. Score each by schedule frequency (more frequent = higher risk) and by namespace (non-platform namespace = higher risk).",
+      "query": "WITH cron_events AS (\n  SELECT\n    event_time,\n    cluster_name,\n    user_username AS principal,\n    object_namespace AS namespace,\n    object_name AS cronjob,\n    request_object:spec:schedule::string AS schedule,\n    request_object:spec:jobTemplate:spec:template:spec:containers[0]:image::string AS image,\n    verb\n  FROM K8S_AUDIT.PUBLIC.EVENTS\n  WHERE verb IN ('create', 'update', 'patch')\n    AND object_resource = 'cronjobs'\n    AND object_apigroup = 'batch'\n    AND event_time >= DATEADD(day, -7, CURRENT_TIMESTAMP())\n)\nSELECT\n  *,\n  CASE\n    WHEN schedule LIKE '* * * * *' THEN 5\n    WHEN schedule LIKE '*/1 %'     THEN 4\n    WHEN schedule LIKE '*/2 %'     THEN 3\n    WHEN schedule LIKE '*/5 %'     THEN 2\n    ELSE 1\n  END AS frequency_score\nFROM cron_events\nWHERE namespace NOT IN ('kube-system', 'cert-manager', 'velero')\nORDER BY frequency_score DESC, event_time DESC;\n",
+      "required_telemetry": [
+        "K8s audit logs landed in Snowflake",
+        "Audit policy capturing requestObject for batch/cronjobs"
+      ],
+      "mapped_data_components": [
+        "Scheduled Job Creation",
+        "Scheduled Job Modification",
+        "Application Log Content"
+      ],
+      "confidence": "medium",
+      "false_positive_considerations": "Frequent-schedule probe-style cronjobs can score high without being malicious. Combine with image-not-on-allowlist for a stronger signal.",
+      "limitations": "Lake latency, schema assumed as standard normalized form.",
+      "references": []
+    }
+  ],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Kubernetes%20CronJob/",
     "https://attack.mitre.org/techniques/T1053/",

@@ -79,7 +79,75 @@
       ]
     }
   ],
-  "vendor_detections": [],
+  "vendor_detections": [
+    {
+      "vendor": "wiz",
+      "language": "wiz_resource_graph",
+      "title": "Persistent workload (Deployment/DaemonSet/StatefulSet) created by non-CI principal",
+      "intent": "Surface every Kubernetes audit event where a persistent workload (Deployment, DaemonSet, ReplicaSet, StatefulSet) is created or replaced by a principal not on the automation allowlist. Backdoor containers exploit these resource kinds because they ensure restart-on-failure, which is the persistence guarantee the adversary wants.",
+      "query": "// Wiz Threat Center / Kubernetes Audit Log query (Resource Graph style)\nKubernetesAuditLog\n| where verb in (\"create\", \"replace\")\n  and objectRef.apiGroup == \"apps\"\n  and objectRef.resource in (\"deployments\", \"daemonsets\", \"replicasets\", \"statefulsets\")\n| where user.username !in~ (\n    \"system:serviceaccount:argocd:argocd-application-controller\",\n    \"system:serviceaccount:flux-system:source-controller\",\n    \"system:serviceaccount:tekton-pipelines:tekton-pipelines-controller\"\n  )\n| project requestReceivedTimestamp,\n          principal = user.username,\n          namespace = objectRef.namespace,\n          kind      = objectRef.resource,\n          name      = objectRef.name,\n          image     = requestObject.spec.template.spec.containers[0].image,\n          replicas  = requestObject.spec.replicas\n",
+      "required_telemetry": [
+        "Wiz Kubernetes audit log connector enabled on every cluster",
+        "Audit policy at RequestResponse level for apps/* resources so requestObject is captured",
+        "Automation principal allowlist maintained as a constant (ArgoCD, Flux, Tekton, or whatever the org uses)"
+      ],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Pod Creation"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "Operator deployments and managed-component upgrades by cluster admins fire here. Pair with image-allowlist scoring (see Snowflake block) to suppress trusted-registry pulls.",
+      "limitations": "Sees only API-server-mediated workload changes. An adversary writing a static pod manifest to /etc/kubernetes/manifests/ bypasses this entirely (see MS-TA9017).",
+      "references": [
+        "https://kubernetes.io/docs/concepts/policy/pod-security-admission/"
+      ]
+    },
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: workload created with non-allowlisted image in a sensitive namespace",
+      "intent": "Fire on Kubernetes audit events for Deployment / DaemonSet / StatefulSet creation when the image is not on the registry allowlist or when the workload is created in a kube-system-class namespace by a non-platform principal.",
+      "query": "- list: backdoor_workload_kinds\n  items: [\"deployments\", \"daemonsets\", \"statefulsets\", \"replicasets\"]\n\n- list: trusted_registries\n  items: [\"registry.allowlisted.example.com/\", \"gcr.io/distroless/\", \"public.ecr.aws/eks-distro/\"]\n\n- list: platform_namespaces\n  items: [\"kube-system\", \"kube-public\", \"calico-system\"]\n\n- macro: image_not_trusted\n  condition: not (ka.req.pod.images intersects (trusted_registries))\n\n- rule: Backdoor Workload Created\n  desc: A persistent K8s workload was created with an untrusted image, or in a platform namespace by a non-platform principal.\n  condition: kevt and kcreate and ka.target.resource in (backdoor_workload_kinds)\n             and (image_not_trusted or ka.target.namespace in (platform_namespaces))\n  output: >\n    Backdoor workload created\n    (user=%ka.user.name verb=%ka.verb resource=%ka.target.resource\n     name=%ka.target.name ns=%ka.target.namespace\n     images=%ka.req.pod.images replicas=%ka.req.pod.replicas)\n  priority: WARNING\n  source: k8s_audit\n  tags: [k8s, mitre_persistence, T1543]\n",
+      "required_telemetry": [
+        "Falco with k8s_audit plugin enabled, audit webhook configured at API server",
+        "Audit policy capturing requestObject for apps/* at RequestResponse level",
+        "trusted_registries and platform_namespaces lists kept in version control"
+      ],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Container Creation",
+        "Pod Creation"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "DaemonSets owned by add-on operators (Cilium, Linkerd, Istio control plane) trigger frequently and legitimately. Allowlist by service-account-of-origin rather than by image.",
+      "limitations": "Webhook delivery is best-effort. If audit events to Falco's webhook are dropped or rate-limited, the rule never sees them; pair with a runtime-level 'pause/sleep masquerading as legitimate workload' rule.",
+      "references": [
+        "https://falco.org/docs/rules/k8s-audit/",
+        "https://github.com/falcosecurity/plugins/tree/main/plugins/k8saudit"
+      ]
+    },
+    {
+      "vendor": "snowflake",
+      "language": "sql",
+      "title": "Persistent-workload creation hunt with image-allowlist scoring",
+      "intent": "Hunt over the audit-log lake for persistent-workload creations (Deployments, DaemonSets, StatefulSets) where the image's registry prefix does not match the approved set.",
+      "query": "-- K8S_AUDIT.PUBLIC.EVENTS: normalized audit log landing table\n-- K8S_AUDIT.REF.REGISTRY_ALLOWLIST: trusted registry prefixes\nWITH allow AS (\n  SELECT prefix FROM K8S_AUDIT.REF.REGISTRY_ALLOWLIST\n),\nbackdoor_kinds AS (\n  SELECT 'deployments' AS k UNION ALL SELECT 'daemonsets'\n  UNION ALL SELECT 'statefulsets' UNION ALL SELECT 'replicasets'\n),\ncreates AS (\n  SELECT\n    event_time,\n    cluster_name,\n    user_username AS principal,\n    object_namespace AS namespace,\n    object_name AS workload,\n    object_resource AS kind,\n    request_object:spec:template:spec:containers[0]:image::string AS image\n  FROM K8S_AUDIT.PUBLIC.EVENTS\n  WHERE verb IN ('create', 'replace')\n    AND object_resource IN (SELECT k FROM backdoor_kinds)\n    AND object_apigroup = 'apps'\n    AND event_time >= DATEADD(day, -7, CURRENT_TIMESTAMP())\n)\nSELECT *\nFROM   creates c\nWHERE  NOT EXISTS (SELECT 1 FROM allow a WHERE STARTSWITH(c.image, a.prefix))\nORDER  BY event_time DESC;\n",
+      "required_telemetry": [
+        "K8s audit logs landed in Snowflake (Fluent Bit / Firehose / Snowpipe)",
+        "REGISTRY_ALLOWLIST reference table maintained with quarterly review",
+        "Audit policy capturing requestObject for apps/*"
+      ],
+      "mapped_data_components": [
+        "Application Log Content"
+      ],
+      "confidence": "medium",
+      "false_positive_considerations": "Lake latency means this is a hunt not a real-time alert. Use a streaming Falco rule for time-sensitive blocking.",
+      "limitations": "Schema assumes a normalized landing table; each org's audit-log normalization differs. Adjust column names to match your actual schema.",
+      "references": [
+        "https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/"
+      ]
+    }
+  ],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Backdoor%20container/",
     "https://attack.mitre.org/techniques/T1543/"

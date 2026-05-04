@@ -78,7 +78,70 @@
       ]
     }
   ],
-  "vendor_detections": [],
+  "vendor_detections": [
+    {
+      "vendor": "wiz",
+      "language": "wiz_resource_graph",
+      "title": "ValidatingWebhookConfiguration / MutatingWebhookConfiguration created or modified",
+      "intent": "Every change to admission webhook configuration. A malicious mutating webhook can rewrite every pod admitted to the cluster, granting persistence and instant-deploy-time tampering.",
+      "query": "// Wiz Threat Center / Kubernetes Audit Log query (Resource Graph style)\nKubernetesAuditLog\n| where verb in (\"create\", \"update\", \"patch\", \"replace\")\n  and objectRef.apiGroup == \"admissionregistration.k8s.io\"\n  and objectRef.resource in (\"validatingwebhookconfigurations\", \"mutatingwebhookconfigurations\")\n| project requestReceivedTimestamp,\n          principal = user.username,\n          name      = objectRef.name,\n          kind      = objectRef.resource,\n          webhooks  = requestObject.webhooks\n",
+      "required_telemetry": [
+        "Wiz K8s audit log connector",
+        "Audit policy at RequestResponse for admissionregistration.k8s.io"
+      ],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Cluster Metadata"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "Legitimate operators (cert-manager, OPA Gatekeeper, Kyverno, Istio) install/update webhooks during their lifecycle. Allowlist by service-account-of-origin and by webhook name pattern.",
+      "limitations": "Sees the configuration change but not the malicious payload that runs at admission time. Pair with a Falco rule that tracks suspicious behavior of the webhook server pod itself.",
+      "references": [
+        "https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/"
+      ]
+    },
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: admission webhook configuration mutated by non-platform principal",
+      "intent": "Fire on every webhook configuration mutation by a principal that is not on the trusted-platform allowlist (cert-manager, OPA Gatekeeper, Kyverno, Istio operator).",
+      "query": "- list: trusted_admission_principals\n  items:\n    - \"system:serviceaccount:cert-manager:cert-manager\"\n    - \"system:serviceaccount:gatekeeper-system:gatekeeper-admin\"\n    - \"system:serviceaccount:kyverno:kyverno-admission-controller\"\n    - \"system:serviceaccount:istio-system:istiod-service-account\"\n\n- rule: Admission Webhook Configuration Mutated\n  desc: A validating or mutating webhook configuration was changed by a non-trusted principal.\n  condition: kevt and (kcreate or kmodify)\n             and ka.target.resource in (\"validatingwebhookconfigurations\", \"mutatingwebhookconfigurations\")\n             and not (ka.user.name in (trusted_admission_principals))\n  output: >\n    Admission webhook config mutated\n    (user=%ka.user.name verb=%ka.verb resource=%ka.target.resource\n     name=%ka.target.name)\n  priority: CRITICAL\n  source: k8s_audit\n  tags: [k8s, mitre_persistence, T1546]\n",
+      "required_telemetry": [
+        "Falco k8s_audit plugin",
+        "Audit policy at RequestResponse for admissionregistration.k8s.io",
+        "trusted_admission_principals list updated when new admission-controlling operators are installed"
+      ],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Cluster Metadata"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "Operator upgrades that re-create webhook configurations under a different SA fire here until the allowlist is updated. Bias toward alert-not-block until tuned.",
+      "limitations": "No visibility into the webhook payload itself. A webhook that legitimately exists but starts behaving maliciously (e.g., via an updated container image) is invisible to this rule.",
+      "references": [
+        "https://falco.org/docs/rules/k8s-audit/",
+        "https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/"
+      ]
+    },
+    {
+      "vendor": "snowflake",
+      "language": "sql",
+      "title": "Webhook configuration change history with rare-principal anomaly",
+      "intent": "List every webhook configuration change in the lake; flag those by principals that have not changed webhook configuration in the prior 90 days as anomalous.",
+      "query": "WITH webhook_changes AS (\n  SELECT\n    event_time,\n    cluster_name,\n    user_username AS principal,\n    object_resource AS kind,\n    object_name AS name,\n    verb,\n    request_object\n  FROM K8S_AUDIT.PUBLIC.EVENTS\n  WHERE verb IN ('create', 'update', 'patch', 'replace')\n    AND object_resource IN ('validatingwebhookconfigurations', 'mutatingwebhookconfigurations')\n    AND object_apigroup = 'admissionregistration.k8s.io'\n    AND event_time >= DATEADD(day, -7, CURRENT_TIMESTAMP())\n),\nprincipal_history AS (\n  SELECT\n    user_username AS principal,\n    MAX(event_time) AS last_seen_before_window\n  FROM K8S_AUDIT.PUBLIC.EVENTS\n  WHERE object_resource IN ('validatingwebhookconfigurations', 'mutatingwebhookconfigurations')\n    AND event_time < DATEADD(day, -7, CURRENT_TIMESTAMP())\n    AND event_time >= DATEADD(day, -97, CURRENT_TIMESTAMP())\n  GROUP BY 1\n)\nSELECT\n  c.*,\n  CASE WHEN h.last_seen_before_window IS NULL THEN TRUE ELSE FALSE END AS new_principal\nFROM   webhook_changes c\nLEFT JOIN principal_history h ON h.principal = c.principal\nORDER  BY new_principal DESC, event_time DESC;\n",
+      "required_telemetry": [
+        "K8s audit logs landed in Snowflake with at least 97 days retention",
+        "Audit policy capturing admissionregistration.k8s.io at RequestResponse"
+      ],
+      "mapped_data_components": [
+        "Application Log Content"
+      ],
+      "confidence": "medium",
+      "false_positive_considerations": "First-time installs of legitimate admission operators flag here. Combine with vendor reputation lookup or a manual approval workflow on first-seen principals.",
+      "limitations": "90-day baseline assumes the lake retains audit logs that long. Adjust window to your retention.",
+      "references": []
+    }
+  ],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Malicious%20admission%20controller/",
     "https://attack.mitre.org/techniques/T1546/"

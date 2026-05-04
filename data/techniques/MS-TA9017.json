@@ -55,7 +55,51 @@
     }
   ],
   "detection_strategies": [],
-  "vendor_detections": [],
+  "vendor_detections": [
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: write to kubelet static-pod manifest path",
+      "intent": "Fire on any file write to the kubelet's static-pod manifest directory on a node. Static pods bypass the API server entirely, so audit-log-based detection cannot see them; only on-node syscall-level monitoring can.",
+      "query": "- list: kubelet_static_pod_manifest_paths\n  items: [\"/etc/kubernetes/manifests/\", \"/etc/kubelet.d/\"]\n\n- rule: Write To Kubelet Static Pod Manifest Path\n  desc: A file was created, modified, or renamed inside the kubelet's static-pod manifest directory by a process that is not the legitimate package manager or kubelet self-update path.\n  condition: open_write\n             and (fd.directory in (kubelet_static_pod_manifest_paths)\n                  or fd.directory startswith \"/etc/kubernetes/manifests/\"\n                  or fd.directory startswith \"/etc/kubelet.d/\")\n             and not proc.pname in (dpkg, rpm, yum, apt, apt-get, kubeadm)\n  output: >\n    Static pod manifest written outside legitimate path\n    (user=%user.name proc=%proc.cmdline file=%fd.name pid_ns=%proc.pid_ns container=%container.name)\n  priority: CRITICAL\n  tags: [k8s, persistence, static_pod]\n",
+      "required_telemetry": [
+        "Sysdig agent (or open-source Falco) deployed as a DaemonSet on every node",
+        "Modern syscall driver (eBPF CO-RE) loaded so file-write events on the host filesystem are observable from the agent's namespace-aware view"
+      ],
+      "mapped_data_components": [
+        "File Creation",
+        "File Modification"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "Legitimate cluster-bootstrap tools (kubeadm, kubelet TLS bootstrap, OS package updates of kube-apiserver/kube-controller-manager static manifests) write to these paths. Whitelist by the parent process exact match.",
+      "limitations": "Falco must observe the host filesystem, not just the container's. On nodes where the agent runs in a strict-namespaced pod without host filesystem visibility, this rule never fires. The agent must be configured with appropriate hostPath access to /etc/kubernetes/.",
+      "references": [
+        "https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/",
+        "https://falco.org/docs/concepts/rules/"
+      ]
+    },
+    {
+      "vendor": "snowflake",
+      "language": "sql",
+      "title": "File-integrity-monitoring hunt over node /etc/kubernetes/manifests/",
+      "intent": "Hunt over file-integrity events shipped from each node into the lake. List every write to the kubelet static-pod manifest path, joined against a known-good manifest snapshot to surface anomalies.",
+      "query": "-- HOST_FIM.PUBLIC.EVENTS: file-integrity events from host agents\n-- K8S.REF.STATIC_POD_MANIFEST_BASELINE: known-good manifest digests per cluster\nWITH writes AS (\n  SELECT\n    event_time,\n    cluster_name,\n    node_name,\n    file_path,\n    actor_process,\n    actor_uid,\n    file_sha256\n  FROM HOST_FIM.PUBLIC.EVENTS\n  WHERE event_kind IN ('write', 'create', 'rename')\n    AND (file_path LIKE '/etc/kubernetes/manifests/%'\n         OR file_path LIKE '/etc/kubelet.d/%')\n    AND event_time >= DATEADD(day, -7, CURRENT_TIMESTAMP())\n),\nbaseline AS (\n  SELECT cluster_name, file_path, file_sha256 FROM K8S.REF.STATIC_POD_MANIFEST_BASELINE\n)\nSELECT\n  w.*,\n  CASE WHEN b.file_sha256 IS NULL THEN 'unknown digest' ELSE 'matches baseline' END AS digest_status\nFROM   writes w\nLEFT JOIN baseline b\n    ON b.cluster_name = w.cluster_name\n   AND b.file_path    = w.file_path\n   AND b.file_sha256  = w.file_sha256\nWHERE  digest_status = 'unknown digest'\nORDER  BY event_time DESC;\n",
+      "required_telemetry": [
+        "Host-level FIM agent (auditd, osquery, Falco-to-lake, or commercial FIM) shipping file-write events to Snowflake",
+        "STATIC_POD_MANIFEST_BASELINE reference table populated and refreshed when legitimate manifest changes ship"
+      ],
+      "mapped_data_components": [
+        "File Creation",
+        "File Modification"
+      ],
+      "confidence": "medium",
+      "false_positive_considerations": "Cluster-control-plane upgrade events change the static manifests for kube-apiserver / kube-controller-manager / kube-scheduler. Coordinate baseline refresh with the upgrade process, or pre-stage approved digests.",
+      "limitations": "FIM telemetry shipping from every node is operationally heavy. Many environments don't have it. Without it, static-pod creation is invisible.",
+      "references": [
+        "https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/"
+      ]
+    }
+  ],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Static%20Pods/"
   ],
