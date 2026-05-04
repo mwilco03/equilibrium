@@ -33,5 +33,17 @@ Always verify the symlink is in place before writing memories. This ensures any 
 ## Rules
 
 - Constants over literals, enums over hardcodes
-- No secrets in code or git — use REPLACE_ME placeholders
+- No secrets in code or git, use REPLACE_ME placeholders
 - Conventional commits: `type(scope): description`
+
+## CI economy
+
+GitHub Actions minutes are a finite resource on this project. Be judicious:
+
+- **Batch commits before pushing.** Multiple related edits in one push is one Pages build; the same edits across N pushes is N builds.
+- **Run validation locally** before pushing data or schema changes:
+  - `cd spa && pnpm run typecheck && pnpm run build`
+  - `node .github/scripts/check-dc-refs.mjs`
+  - ajv schema validation against every `data/techniques/*.json`
+- **Doc-only changes do not need to wait for CI**: `docs/**`, `README.md`, and `CLAUDE.md` are excluded from Pages and Validate triggers via `paths-ignore` / `paths` filters.
+- The `Validate` workflow uses concurrency cancellation; a new commit on the same ref pre-empts the in-flight run, but stacking many pushes still wastes start-up overhead.

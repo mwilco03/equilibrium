@@ -5,9 +5,22 @@ on:
     paths:
       - "data/techniques/**"
       - "schema/**"
+      - ".github/scripts/check-dc-refs.mjs"
       - ".github/workflows/validate.yml"
   push:
     branches: [main]
+    paths:
+      - "data/techniques/**"
+      - "schema/**"
+      - ".github/scripts/check-dc-refs.mjs"
+      - ".github/workflows/validate.yml"
+
+# Cancel any in-flight Validate run on the same ref when a new commit lands.
+# Pure cost-control: avoids stacking redundant runs when commits arrive close
+# together.
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   schema:

@@ -96,14 +96,22 @@ pnpm validate     # runs ajv validate over data/techniques/*.json against the sc
 
 ## Deployment
 
-GitHub Actions builds on every push to `main`:
+GitHub Actions builds on every push to `main` that affects the deployed bundle:
 
 1. Validate all `data/techniques/*.json` against `schema/equilibrium.schema.json`.
 2. Build the Orama search index.
 3. Build the SPA with `base: '/equilibrium/'`.
 4. Publish to GitHub Pages.
 
-Pretty URLs (e.g., `/equilibrium/techniques/T1609`) are supported via a `404.html` fallback that re-bootstraps the SPA, so deep-link refresh works.
+Pretty URLs (e.g., `/equilibrium/techniques/MS-TA9006`) are supported via a `404.html` fallback that re-bootstraps the SPA, so deep-link refresh works.
+
+### CI economy
+
+Both workflows are scoped with `paths` / `paths-ignore` filters so doc-only changes (`docs/**`, `README.md`, `CLAUDE.md`) do not consume Actions runs. The `Validate` workflow uses concurrency cancellation so a fresh commit on the same ref pre-empts the in-flight run. Practical contributor guidance:
+
+- Run validation locally first (`cd spa && pnpm validate`) before opening a PR.
+- Batch related changes into one commit / one PR rather than many micro-commits.
+- Edits confined to `docs/` or markdown do not trigger Pages or Validate.
 
 ## License
 

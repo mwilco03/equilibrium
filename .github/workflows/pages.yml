@@ -3,6 +3,15 @@ name: Pages
 on:
   push:
     branches: [main]
+    # Pages rebuilds only when something actually affects the deployed bundle.
+    # Docs / README / CLAUDE.md updates do not change the SPA, so they should
+    # not burn an Actions run.
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - "CLAUDE.md"
+      - ".gitignore"
+      - ".claude-memory/**"
   workflow_dispatch:
 
 permissions:
