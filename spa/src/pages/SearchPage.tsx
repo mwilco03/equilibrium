@@ -34,7 +34,7 @@ export function SearchPage() {
   }, [term]);
 
   return (
-    <div className="mx-auto flex max-w-screen-xl flex-col gap-4 p-6">
+    <div className="mx-auto flex max-w-screen-xl flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900 px-3 py-2">
         <Search className="h-4 w-4 text-zinc-400" aria-hidden />
         <input

@@ -14,9 +14,9 @@ jobs:
     if: contains(github.event.issue.labels.*.name, 'submission:technique') || contains(github.event.issue.labels.*.name, 'submission:detection')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
 
@@ -30,7 +30,7 @@ jobs:
         run: node .github/scripts/parse-issue.mjs
 
       - name: Open or update draft PR
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: submission/issue-${{ github.event.issue.number }}

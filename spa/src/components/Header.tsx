@@ -38,9 +38,10 @@ export function Header() {
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-100"
+            aria-label="GitHub repository"
           >
             <Github className="h-4 w-4" aria-hidden />
-            repo
+            <span className="hidden sm:inline">repo</span>
           </a>
         </div>
       </div>

@@ -15,7 +15,7 @@ export function FilterPanel({
   onDataComponentChange,
 }: Props) {
   return (
-    <aside className="flex flex-col gap-6 border-r border-zinc-800 bg-zinc-900/40 p-4 text-sm md:w-72">
+    <aside className="flex flex-col gap-6 border-b border-zinc-800 bg-zinc-900/40 p-4 text-sm md:w-72 md:border-b-0 md:border-r">
       <div className="flex items-center gap-2 text-zinc-400">
         <Filter className="h-4 w-4" aria-hidden />
         <span>Filters</span>

@@ -1,0 +1,172 @@
+{
+  "id": "EQ-T1525",
+  "title": "Implant Internal Image",
+  "description": "An adversary implants malicious content into a container image stored in an internal registry the cluster pulls from. Once provisioning tools (GitOps controllers, Helm releases, deployment pipelines) deploy the latest tag of the affected image, the adversary gains persistent execution inside the cluster every time the workload restarts. Detection is anchored on registry write events, image digest divergence between policy and reality, and admission-time signature verification failures.",
+  "tags": ["kubernetes", "containers", "persistence", "supply-chain", "registry"],
+  "mitre_attack": {
+    "technique_id": "T1525",
+    "name": "Implant Internal Image",
+    "tactics": ["persistence"],
+    "sub_technique_of": null,
+    "platforms": ["Containers", "IaaS"],
+    "url": "https://attack.mitre.org/techniques/T1525/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": null,
+    "name": "Compromised Image In Registry",
+    "tactic": "initial_access",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Compromised%20Image%20In%20Registry/",
+    "description": "An adversary places a backdoored image in the cluster's internal or third-party registry. Workloads pulling that image, often by a mutable tag like `latest` or `prod`, execute the implanted code on every restart. The Microsoft matrix categorizes this as Initial Access from the cluster's point of view; MITRE categorizes it as Persistence from the adversary's."
+  },
+  "data_components": [
+    {
+      "id": null,
+      "name": "Image Creation",
+      "data_source_id": "DS0007",
+      "data_source_name": "Image",
+      "definition": "Construction of a container or VM image, including the principal that pushed it, the source build pipeline, the resulting digest, and the layers added relative to the previous tag of the same repository.",
+      "url": "https://attack.mitre.org/datasources/DS0007/",
+      "relevant_events": [
+        "Registry push event with digest, repository, tag, and authenticated principal",
+        "Image build event from a CI system with provenance attestation (SLSA, in-toto)",
+        "Layer diff between consecutive pushes to the same tag"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Image Modification",
+      "data_source_id": "DS0007",
+      "data_source_name": "Image",
+      "definition": "Replacement of an existing tag's digest in a registry without a corresponding pipeline build event. The mismatch between expected provenance and observed digest is the highest-fidelity signal.",
+      "url": "https://attack.mitre.org/datasources/DS0007/",
+      "relevant_events": [
+        "Registry tag-update event where the new digest does not match any digest produced by the canonical CI pipeline in the last N days",
+        "Sigstore/Cosign verification failure at admission time",
+        "Notary/in-toto attestation verification failure"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Registry server access logs (Harbor, ECR, GCR, GHCR, ACR, Quay), Kubernetes admission webhook logs, and signature-verification controller logs. The push-side and pull-side stories live here.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Registry server log entry: PUT manifest by an unexpected principal",
+        "Kubernetes admission webhook denial: signature verification failed",
+        "Pull event correlated with a manifest pushed in the last 5 minutes"
+      ]
+    },
+    {
+      "id": null,
+      "name": "User Account Authentication",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Authentication events against the registry. A push from a stale or unexpected credential is a strong indicator of compromise even before the manifest is parsed.",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Registry login by a service account that has not been used in 90 days",
+        "Registry login from a source IP outside the CI runner egress range",
+        "Token issued to a registry write role outside business hours"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0334",
+      "name": "Detection Strategy for T1525 Implant Internal Image",
+      "summary": "Compare every registry push and tag-mutation event against the set of digests produced by the canonical build pipeline. Surface any tag whose current digest has no matching CI provenance, and any pull of such a tag by a cluster workload.",
+      "url": "https://attack.mitre.org/techniques/T1525/",
+      "data_component_refs": ["Image Creation", "Image Modification", "Application Log Content"]
+    },
+    {
+      "id": "AN0946",
+      "name": "Container image backdoor followed by deployment",
+      "summary": "Malicious code injection into container images followed by a registry push and subsequent use in new pod deployments inside the cluster.",
+      "url": "https://attack.mitre.org/techniques/T1525/",
+      "data_component_refs": ["Image Creation", "Image Modification", "Application Log Content"]
+    },
+    {
+      "id": "AN0947",
+      "name": "Cloud VM image with persistence followed by provisioning",
+      "summary": "Creation or alteration of cloud VM images (AMIs, custom images) containing persistence mechanisms, followed by infrastructure provisioning using these compromised images.",
+      "url": "https://attack.mitre.org/techniques/T1525/",
+      "data_component_refs": ["Image Creation", "Image Modification"]
+    }
+  ],
+  "vendor_detections": [
+    {
+      "vendor": "wiz",
+      "language": "wiz_resource_graph",
+      "title": "Registry tag mutated by a non-CI principal",
+      "intent": "Surface any registry manifest push that updates a tag in production-relevant namespaces when the principal is not a known CI runner identity.",
+      "query": "// Wiz Threat Center / Registry events query (Resource Graph style)\nlet ciIdentities = dynamic([\n  \"arn:aws:iam::000000000000:role/github-actions-ecr-push\",\n  \"projects/example/serviceAccounts/cloudbuild-push@example.iam.gserviceaccount.com\"\n]);\nlet protectedRepoPrefix = \"prod/\";\nRegistryEvent\n| where action == \"PutManifest\"\n  and repository startswith protectedRepoPrefix\n  and tag != \"\"\n| where principal !in (ciIdentities)\n| project eventTime, registry, repository, tag, digest, principal, sourceIP, userAgent\n",
+      "required_telemetry": [
+        "Wiz registry connector enabled for every registry the cluster pulls from (ECR, GCR, GHCR, ACR, Quay, Harbor)",
+        "ciIdentities and protectedRepoPrefix maintained as constants, not inlined per query",
+        "Audit logging enabled on the registry"
+      ],
+      "mapped_data_components": ["Image Creation", "Application Log Content", "User Account Authentication"],
+      "confidence": "high",
+      "false_positive_considerations": "Manual operator pushes (break-glass, hotfix) appear here and are legitimate. Treat as alerts that page a maintainer for justification rather than auto-remediated.",
+      "limitations": "Cannot detect implants performed via legitimate CI access (insider threat, compromised CI). Pair with provenance verification (SLSA, in-toto) at admission.",
+      "references": [
+        "https://slsa.dev/spec/v1.0/levels",
+        "https://docs.sigstore.dev/cosign/verifying/verify/"
+      ]
+    },
+    {
+      "vendor": "snowflake",
+      "language": "sql",
+      "title": "Provenance gap: deployed digest absent from CI build history",
+      "intent": "For every distinct image digest pulled by the cluster in the last 24 hours, confirm that digest appears in the CI build-attestation table. Anything that does not match is either a manual push or an implant.",
+      "query": "-- K8S.PUBLIC.IMAGE_PULLS:    one row per pod-pulled image observation\n-- CI.PUBLIC.BUILD_ATTESTATIONS: one row per CI-produced image with provenance\nWITH recent_pulls AS (\n  SELECT DISTINCT\n    cluster_name,\n    image_repository,\n    image_tag,\n    image_digest,\n    MIN(event_time) AS first_seen\n  FROM K8S.PUBLIC.IMAGE_PULLS\n  WHERE event_time >= DATEADD(hour, -24, CURRENT_TIMESTAMP())\n  GROUP BY 1, 2, 3, 4\n)\nSELECT\n  p.cluster_name,\n  p.image_repository,\n  p.image_tag,\n  p.image_digest,\n  p.first_seen\nFROM        recent_pulls p\nLEFT JOIN   CI.PUBLIC.BUILD_ATTESTATIONS a\n     ON     a.image_repository = p.image_repository\n        AND a.image_digest     = p.image_digest\nWHERE       a.image_digest IS NULL\nORDER  BY   p.first_seen DESC;\n",
+      "required_telemetry": [
+        "Image-pull events landed in K8S.PUBLIC.IMAGE_PULLS (e.g., from kubelet event hooks or admission controller logs)",
+        "CI build attestations landed in CI.PUBLIC.BUILD_ATTESTATIONS (Sigstore Rekor entries, in-toto attestations, or pipeline run artifacts)"
+      ],
+      "mapped_data_components": ["Image Creation", "Image Modification"],
+      "confidence": "medium",
+      "false_positive_considerations": "Vendored base images that the team pulls directly without a pipeline build will appear as gaps; allowlist their repositories explicitly.",
+      "limitations": "Lake latency means this is hunt/audit, not real-time prevention. Pair with admission-time signature verification (Cosign verify-attestation, Connaisseur, Kyverno verifyImages) for blocking.",
+      "references": [
+        "https://docs.sigstore.dev/policy-controller/overview/",
+        "https://kyverno.io/policies/?policytypes=verifyImages"
+      ]
+    },
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: pull of an unsigned image at admission time",
+      "intent": "Fail closed on any pod that admits an image whose signature does not verify against the trusted Sigstore policy. Falco wires up Cosign verify-attestation through its image plugin.",
+      "query": "- macro: trusted_signers\n  condition: (image.signers.subject contains \"https://github.com/example-org/.github/.github/workflows/build.yml\")\n\n- rule: Unsigned Or Untrusted Image Admitted\n  desc: A pod is admitted with an image whose signature does not verify against the trusted policy.\n  condition: kevt and pod and kcreate and not trusted_signers\n  output: >\n    Pod admitted with unsigned/untrusted image\n    (user=%ka.user.name pod=%ka.target.name ns=%ka.target.namespace\n     images=%ka.req.pod.images signers=%image.signers)\n  priority: CRITICAL\n  source: k8s_audit\n  tags: [supply_chain, mitre_persistence, T1525]\n",
+      "required_telemetry": [
+        "Falco with k8s_audit plugin and image-signature plugin enabled",
+        "Sigstore policy controller (or equivalent) invoked at admission so image.signers is populated",
+        "Trusted signer subjects maintained as a constant list, not literal strings inline"
+      ],
+      "mapped_data_components": ["Application Log Content", "Image Modification"],
+      "confidence": "medium",
+      "false_positive_considerations": "First rollout of a new pipeline often produces unsigned images; coordinate the policy turn-on with platform team.",
+      "limitations": "Requires upstream signing discipline. If only a fraction of images are signed, this alert fires constantly and is ignored.",
+      "references": [
+        "https://falco.org/docs/rules/k8s-audit/",
+        "https://docs.sigstore.dev/cosign/verifying/verify/"
+      ]
+    }
+  ],
+  "references": [
+    "https://attack.mitre.org/techniques/T1525/",
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Compromised%20Image%20In%20Registry/",
+    "https://slsa.dev/spec/v1.0/levels",
+    "https://docs.sigstore.dev/policy-controller/overview/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": ["equilibrium-bootstrap"]
+  }
+}

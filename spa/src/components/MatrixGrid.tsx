@@ -40,16 +40,26 @@ export function MatrixGrid({ techniques }: Props) {
   return (
     <div className="overflow-x-auto">
       <div
-        className="grid min-w-max gap-2 p-4"
-        style={{ gridTemplateColumns: `repeat(${populated.length}, minmax(220px, 1fr))` }}
+        // Layout strategy: phone (default) renders one tactic per row stacked
+        // vertically. Tablet+ (`sm:`) flips to the matrix grid that mirrors
+        // ATT&CK Navigator, with horizontal scroll if the columns exceed the
+        // viewport. The CSS variable controls grid template columns; `flex`
+        // mode on mobile ignores `grid-template-columns`.
+        className="flex flex-col gap-4 p-3 sm:grid sm:min-w-max sm:gap-2 sm:p-4"
+        style={{
+          gridTemplateColumns: `repeat(${populated.length}, minmax(220px, 1fr))`,
+        }}
       >
         {populated.map((tactic) => (
           <div key={tactic} className="flex flex-col gap-2">
             <div
-              className="rounded-t bg-zinc-900 px-3 py-2 text-xs font-semibold uppercase tracking-wide"
+              className="sticky top-0 z-10 rounded-t bg-zinc-900 px-3 py-2 text-xs font-semibold uppercase tracking-wide"
               style={{ borderBottom: `2px solid var(--tactic-${tactic}, #71717a)` }}
             >
               {TACTIC_LABELS[tactic]}
+              <span className="ml-2 text-zinc-500">
+                {byTactic.get(tactic)?.length ?? 0}
+              </span>
             </div>
             {(byTactic.get(tactic) ?? []).map((t) => (
               <Link

@@ -1,0 +1,167 @@
+{
+  "id": "EQ-T1610",
+  "title": "Deploy Container",
+  "description": "An adversary deploys a new container into a Kubernetes cluster (or directly onto a container runtime) to achieve execution, evade endpoint controls that gate pod creation, or sidestep image-allowlist policy. The canonical surface is the Kubernetes API server's create verb against pods, deployments, daemonsets, jobs, or cronjobs, and equivalents on the kubelet (`/run`) and the Docker daemon (`docker run`).",
+  "tags": ["kubernetes", "containers", "execution", "pod-create", "docker-run"],
+  "mitre_attack": {
+    "technique_id": "T1610",
+    "name": "Deploy Container",
+    "tactics": ["execution", "defense_evasion"],
+    "sub_technique_of": null,
+    "platforms": ["Containers"],
+    "url": "https://attack.mitre.org/techniques/T1610/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": null,
+    "name": "New Container",
+    "tactic": "execution",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/New%20Container/",
+    "description": "Adversaries deploy a new container into the cluster, often using the Kubernetes API or `kubectl run`, to gain execution. The pod may use a non-allowlisted image, request privileged mode, or mount sensitive host paths."
+  },
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit log entries for pod, deployment, daemonset, job, and cronjob create verbs are the highest-fidelity signal for T1610.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit event: verb=create, objectRef.resource in {pods, deployments, daemonsets, jobs, cronjobs}",
+        "Docker daemon event: type=container, action=create",
+        "containerd event: ContainerCreate"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Container Creation",
+      "data_source_id": "DS0032",
+      "data_source_name": "Container",
+      "definition": "Initial construction of a new container, including the image reference, runtime arguments, and security context. Privileged mode, host namespace sharing, and hostPath mounts on creation are the highest-risk attributes.",
+      "url": "https://attack.mitre.org/datasources/DS0032/",
+      "relevant_events": [
+        "Pod manifest with securityContext.privileged=true",
+        "Pod manifest with hostPID, hostNetwork, or hostIPC set to true",
+        "Pod manifest mounting hostPath volumes (root filesystem, /var/run/docker.sock, /etc/kubernetes)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Container Start",
+      "data_source_id": "DS0032",
+      "data_source_name": "Container",
+      "definition": "Initialization of a container as a result of a creation event. Pairing creation with start (and the first network/process activity inside) is what DET0249 calls a behavior chain.",
+      "url": "https://attack.mitre.org/datasources/DS0032/",
+      "relevant_events": [
+        "containerd TaskStart event with container_id matching a recent ContainerCreate",
+        "First outbound network connection from the new container PID namespace"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Image Metadata",
+      "data_source_id": "DS0007",
+      "data_source_name": "Image",
+      "definition": "Properties of the container image used: registry, repository, tag, digest, signature status, and provenance. Non-allowlisted registries and unsigned images are the primary risk attributes.",
+      "url": "https://attack.mitre.org/datasources/DS0007/",
+      "relevant_events": [
+        "Pod manifest image field referencing a non-allowlisted registry",
+        "Image without a Sigstore/Cosign signature or with a failed verification"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0249",
+      "name": "Behavior-chain detection for T1610 across Docker & Kubernetes control/node planes",
+      "summary": "Correlate create -> start -> initial network/process activity within a short window. Flag chains where the image is not allowlisted, the principal is not an automation identity, or the runtime attributes are risky (privileged, host namespace access, sensitive hostPath, capability adds).",
+      "url": "https://attack.mitre.org/techniques/T1610/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Container Creation",
+        "Container Start",
+        "Image Metadata"
+      ]
+    },
+    {
+      "id": "AN0693",
+      "name": "API-driven container creation with risky attributes",
+      "summary": "API-initiated pod creation by a non-admin principal using non-allowlisted images or risky runtime attributes (privileged mode, host namespaces, sensitive mounts, capability adds).",
+      "url": "https://attack.mitre.org/techniques/T1610/",
+      "data_component_refs": ["Application Log Content", "Container Creation", "Image Metadata"]
+    }
+  ],
+  "vendor_detections": [
+    {
+      "vendor": "wiz",
+      "language": "wiz_resource_graph",
+      "title": "Pod created from non-allowlisted registry or with privileged runtime attributes",
+      "intent": "Surface every pod creation event where either the image registry is not on the allowlist or the pod requests privileged mode, host namespaces, or sensitive hostPath mounts.",
+      "query": "// Wiz Threat Center / Kubernetes Audit Log query (Resource Graph style)\nKubernetesAuditLog\n| where verb == \"create\"\n  and objectRef.resource == \"pods\"\n  and stage == \"ResponseComplete\"\n| extend\n    image            = tostring(requestObject.spec.containers[0].image),\n    privileged       = tobool(requestObject.spec.containers[0].securityContext.privileged),\n    hostPID          = tobool(requestObject.spec.hostPID),\n    hostNetwork      = tobool(requestObject.spec.hostNetwork),\n    hostPathMounts   = tostring(requestObject.spec.volumes)\n| where\n    not (image startswith \"registry.allowlisted.example.com/\")\n    or privileged == true\n    or hostPID == true\n    or hostNetwork == true\n    or hostPathMounts has \"hostPath\"\n| project requestReceivedTimestamp,\n          principal = user.username,\n          namespace = objectRef.namespace,\n          pod = objectRef.name,\n          image, privileged, hostPID, hostNetwork, hostPathMounts\n",
+      "required_telemetry": [
+        "Wiz Kubernetes audit log connector enabled on every cluster",
+        "Audit policy configured at RequestResponse level so requestObject is captured for pod create events",
+        "An allowlist of approved registries maintained as a constant (not a literal in the query)"
+      ],
+      "mapped_data_components": [
+        "Application Log Content",
+        "Container Creation",
+        "Image Metadata"
+      ],
+      "confidence": "high",
+      "false_positive_considerations": "Privileged DaemonSets that ship with managed Kubernetes (CNI agents, CSI drivers, node-exporter) appear here. Maintain an exception list keyed by service account, not by image string.",
+      "limitations": "Does not see pods created directly via the kubelet's static pod manifest path or via Docker daemon out-of-band. Pair with a runtime sensor for those.",
+      "references": ["https://kubernetes.io/docs/concepts/policy/pod-security-admission/"]
+    },
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: privileged or hostPath pod created via Kubernetes API",
+      "intent": "Falco rule that fires on Kubernetes audit events for pod creation when the resulting pod is privileged or mounts sensitive host paths.",
+      "query": "- rule: Privileged or HostPath Pod Created\n  desc: A privileged pod or one mounting a sensitive hostPath was created via the K8s API.\n  condition: >\n    kevt and pod and kcreate\n    and (ka.req.pod.containers.privileged intersects (true)\n         or ka.req.pod.host_network=true\n         or ka.req.pod.host_pid=true\n         or ka.req.pod.volumes.hostpath intersects (\"/\", \"/var/run/docker.sock\", \"/etc/kubernetes\", \"/proc\"))\n  output: >\n    Privileged or hostPath pod created\n    (user=%ka.user.name verb=%ka.verb resource=%ka.target.resource\n     pod=%ka.target.name ns=%ka.target.namespace\n     images=%ka.req.pod.images privileged=%ka.req.pod.containers.privileged\n     hostNetwork=%ka.req.pod.host_network hostPid=%ka.req.pod.host_pid\n     hostPathVolumes=%ka.req.pod.volumes.hostpath)\n  priority: WARNING\n  source: k8s_audit\n  tags: [k8s, mitre_execution, T1610]\n",
+      "required_telemetry": [
+        "Falco deployed with k8s_audit plugin enabled",
+        "Kubernetes API server configured to forward audit events to Falco's webhook",
+        "Audit policy capturing requestObject at RequestResponse level for pods"
+      ],
+      "mapped_data_components": ["Application Log Content", "Container Creation"],
+      "confidence": "high",
+      "false_positive_considerations": "Cluster-managed DaemonSets often legitimately use hostPath and privileged mode. Use Falco's macro/list mechanism to allowlist them by image or service account.",
+      "limitations": "Webhook delivery is best-effort; if the audit webhook is rate-limited or dropped, Falco never sees the event.",
+      "references": [
+        "https://falco.org/docs/rules/k8s-audit/",
+        "https://github.com/falcosecurity/plugins/tree/main/plugins/k8saudit"
+      ]
+    },
+    {
+      "vendor": "snowflake",
+      "language": "sql",
+      "title": "Pod-creation hunt with risky attribute scoring",
+      "intent": "Score every pod creation event over a 7-day window by accumulating points for each risky attribute (privileged, hostPID/Network/IPC, sensitive hostPath, non-allowlisted registry). Surface anything above a threshold.",
+      "query": "-- K8S_AUDIT.PUBLIC.EVENTS is the normalized audit-log landing table.\n-- K8S_AUDIT.REF.REGISTRY_ALLOWLIST holds approved registry prefixes.\nWITH allow AS (\n  SELECT prefix FROM K8S_AUDIT.REF.REGISTRY_ALLOWLIST\n),\ncreate_events AS (\n  SELECT\n    event_time,\n    cluster_name,\n    user_username AS principal,\n    object_namespace AS namespace,\n    object_name AS pod,\n    request_object\n  FROM K8S_AUDIT.PUBLIC.EVENTS\n  WHERE verb = 'create'\n    AND object_resource = 'pods'\n    AND event_time >= DATEADD(day, -7, CURRENT_TIMESTAMP())\n),\nscored AS (\n  SELECT\n    e.*,\n    request_object:spec:containers[0]:image::string AS image,\n    request_object:spec:containers[0]:securityContext:privileged::boolean AS privileged,\n    request_object:spec:hostPID::boolean    AS host_pid,\n    request_object:spec:hostNetwork::boolean AS host_network,\n    request_object:spec:hostIPC::boolean    AS host_ipc,\n    request_object:spec:volumes             AS volumes,\n    (CASE WHEN privileged = TRUE THEN 3 ELSE 0 END)\n  + (CASE WHEN host_pid    = TRUE THEN 2 ELSE 0 END)\n  + (CASE WHEN host_network = TRUE THEN 1 ELSE 0 END)\n  + (CASE WHEN host_ipc    = TRUE THEN 1 ELSE 0 END)\n  + (CASE WHEN ARRAY_TO_STRING(volumes, ',') ILIKE '%hostPath%' THEN 2 ELSE 0 END)\n  + (CASE WHEN NOT EXISTS (SELECT 1 FROM allow a WHERE STARTSWITH(image, a.prefix)) THEN 3 ELSE 0 END)\n      AS risk_score\n  FROM create_events e\n)\nSELECT *\nFROM   scored\nWHERE  risk_score >= 3\nORDER  BY risk_score DESC, event_time DESC;\n",
+      "required_telemetry": [
+        "Kubernetes audit logs landed in Snowflake (e.g., Fluent Bit -> S3 -> Snowpipe)",
+        "K8S_AUDIT.REF.REGISTRY_ALLOWLIST table maintained quarterly",
+        "Audit policy at RequestResponse level for pods so request_object is populated"
+      ],
+      "mapped_data_components": ["Application Log Content", "Container Creation", "Image Metadata"],
+      "confidence": "medium",
+      "false_positive_considerations": "Legitimate platform DaemonSets will score high on privileged + hostPath. Add a service-account allowlist join, or filter by namespace, before alerting.",
+      "limitations": "Lake latency means this is a hunt/triage tool, not a real-time alert. Pair with a streaming rule for the highest-score patterns.",
+      "references": ["https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/"]
+    }
+  ],
+  "references": [
+    "https://attack.mitre.org/techniques/T1610/",
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/New%20Container/",
+    "https://kubernetes.io/docs/concepts/policy/pod-security-admission/",
+    "https://falco.org/docs/rules/k8s-audit/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": ["equilibrium-bootstrap"]
+  }
+}

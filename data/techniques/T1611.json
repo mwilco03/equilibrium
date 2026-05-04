@@ -1,0 +1,167 @@
+{
+  "id": "EQ-T1611",
+  "title": "Escape to Host",
+  "description": "An adversary breaks out of a container's isolation boundary to gain access to the underlying host kernel and filesystem. In Kubernetes, the highest-frequency primitives are: a privileged pod (capabilities give the container kernel-level reach), a hostPath mount that exposes the host filesystem (or the docker.sock or kubelet credentials) into the container, sharing the host PID/Network/IPC namespace, or abusing CRI-internal sockets. Detection is anchored on the pod spec (declared intent), the runtime sensor (observed escape syscalls and namespace transitions), and the API audit log (the principal that created the offending pod).",
+  "tags": ["kubernetes", "containers", "privilege-escalation", "container-escape", "hostpath"],
+  "mitre_attack": {
+    "technique_id": "T1611",
+    "name": "Escape to Host",
+    "tactics": ["privilege_escalation"],
+    "sub_technique_of": null,
+    "platforms": ["Containers"],
+    "url": "https://attack.mitre.org/techniques/T1611/"
+  },
+  "microsoft_k8s_matrix": {
+    "id": null,
+    "name": "Writable hostPath mount",
+    "tactic": "privilege_escalation",
+    "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Writable%20hostPath%20mount/",
+    "description": "A container with a writable hostPath mount (or, equivalently, a privileged container with host namespace sharing) can read and modify host filesystem state, container runtime sockets, and kubelet credentials, leading to host-level execution."
+  },
+  "data_components": [
+    {
+      "id": null,
+      "name": "Container Creation",
+      "data_source_id": "DS0032",
+      "data_source_name": "Container",
+      "definition": "Initial construction of a new container, including security context (privileged, capabilities), namespace settings (hostPID, hostNetwork, hostIPC), and volume mounts. The escape primitives are declared in the spec, so this component carries the highest pre-runtime signal.",
+      "url": "https://attack.mitre.org/datasources/DS0032/",
+      "relevant_events": [
+        "Pod manifest with securityContext.privileged=true",
+        "Pod manifest with capabilities.add containing SYS_ADMIN, NET_ADMIN, or SYS_PTRACE",
+        "Pod manifest mounting hostPath /, /var/run/docker.sock, /var/lib/kubelet, /etc/kubernetes, or /proc"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Process Creation",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "Process creation events captured by an in-cluster runtime sensor, with namespace and capability context. Escape attempts surface as processes that transition out of the container's PID/mount namespace, or that exec via the container runtime socket from inside the container.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Process exec where the parent is in container PID namespace and the child is in init namespace (mount or PID namespace transition)",
+        "exec of nsenter, unshare, chroot, or runc inside a container",
+        "exec of crictl, ctr, kubectl, or docker against the docker.sock or containerd.sock from inside a container"
+      ]
+    },
+    {
+      "id": null,
+      "name": "OS API Execution",
+      "data_source_id": "DS0028",
+      "data_source_name": "Logon Session",
+      "definition": "Direct kernel API and syscall observation. Container escape via syscalls (unshare, keyctl, mount, pivot_root) is captured at this layer by an eBPF or LSM-based sensor.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Syscall trace: unshare(CLONE_NEWNS) followed by mount() of host paths from inside a container",
+        "Syscall trace: setns() onto a host namespace fd opened from /proc/1/ns",
+        "Syscall trace: keyctl manipulation of the host keyring"
+      ]
+    },
+    {
+      "id": null,
+      "name": "File Modification",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Filesystem writes from inside a container that target host paths via a hostPath mount. Writes to /etc, /usr, /var/lib/kubelet, or to runtime sockets are the strongest signal.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Write to a path that resolves outside the container's chroot via a hostPath bind",
+        "Write to /var/run/docker.sock or /var/run/containerd/containerd.sock from a container",
+        "Write to /etc/cron.* or /var/lib/kubelet/pods/*/credentials from a container"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0219",
+      "name": "Container escape via bind mounts, privileged containers, and runtime-socket abuse",
+      "summary": "Correlate the pod spec (declared escape primitives) with runtime evidence (syscall transitions, file writes to host paths, exec against runtime sockets). A high-fidelity alert requires both: a privileged or hostPath-bound pod is the precondition; the syscall or socket-abuse event is the consummation.",
+      "url": "https://attack.mitre.org/techniques/T1611/",
+      "data_component_refs": ["Container Creation", "Process Creation", "OS API Execution", "File Modification"]
+    },
+    {
+      "id": "AN0612",
+      "name": "Bind-mount, privileged, or docker.sock-based escape",
+      "summary": "Container escape attempts via hostPath bind mounts, privileged containers, or interaction with the container runtime socket from inside a container.",
+      "url": "https://attack.mitre.org/techniques/T1611/",
+      "data_component_refs": ["Container Creation", "Process Creation", "File Modification"]
+    },
+    {
+      "id": "AN0613",
+      "name": "Linux container escape via syscalls",
+      "summary": "Direct syscall-level escape: unshare, keyctl, mount, pivot_root invoked from inside a container PID namespace.",
+      "url": "https://attack.mitre.org/techniques/T1611/",
+      "data_component_refs": ["OS API Execution", "Process Creation"]
+    }
+  ],
+  "vendor_detections": [
+    {
+      "vendor": "wiz",
+      "language": "wiz_resource_graph",
+      "title": "Pod admitted with escape-class primitives",
+      "intent": "Surface every pod admitted with at least one escape primitive in its spec: privileged mode, dangerous capability, host namespace sharing, or hostPath mount targeting a sensitive path.",
+      "query": "// Wiz Threat Center / Kubernetes Audit Log query (Resource Graph style)\nlet sensitivePaths = dynamic([\"/\", \"/etc\", \"/var/run/docker.sock\",\n                              \"/var/run/containerd/containerd.sock\",\n                              \"/var/lib/kubelet\", \"/etc/kubernetes\", \"/proc\"]);\nlet dangerousCaps  = dynamic([\"SYS_ADMIN\", \"SYS_PTRACE\", \"SYS_MODULE\",\n                              \"NET_ADMIN\", \"SYS_BOOT\", \"DAC_READ_SEARCH\"]);\nKubernetesAuditLog\n| where verb == \"create\"\n  and objectRef.resource == \"pods\"\n  and stage == \"ResponseComplete\"\n| extend pod  = requestObject\n| extend privileged = tobool(pod.spec.containers[0].securityContext.privileged)\n| extend caps_added = tostring(pod.spec.containers[0].securityContext.capabilities.add)\n| extend hostPath_paths =\n    tostring(extract_all(@\"\\\"path\\\":\\s*\\\"([^\\\"]+)\\\"\", tostring(pod.spec.volumes)))\n| where privileged == true\n     or hostPath_paths has_any (sensitivePaths)\n     or caps_added has_any (dangerousCaps)\n     or tobool(pod.spec.hostPID) == true\n     or tobool(pod.spec.hostNetwork) == true\n     or tobool(pod.spec.hostIPC) == true\n| project requestReceivedTimestamp,\n          principal = user.username,\n          namespace = objectRef.namespace,\n          pod_name  = objectRef.name,\n          privileged, caps_added, hostPath_paths\n",
+      "required_telemetry": [
+        "Wiz Kubernetes audit log connector",
+        "Audit policy at RequestResponse level on pods so requestObject is captured",
+        "Constants for sensitivePaths and dangerousCaps maintained as enums, not inlined per-query"
+      ],
+      "mapped_data_components": ["Container Creation"],
+      "confidence": "high",
+      "false_positive_considerations": "CNI/CSI/node-exporter DaemonSets legitimately need many of these primitives. Maintain an exception list keyed by service account, not by image.",
+      "limitations": "Pre-runtime only: this catches the declaration of the primitive, not the actual escape. Pair with the Falco rule below.",
+      "references": ["https://kubernetes.io/docs/concepts/policy/pod-security-admission/"]
+    },
+    {
+      "vendor": "sysdig",
+      "language": "falco_yaml",
+      "title": "Falco: container escape syscall trace",
+      "intent": "Detect runtime evidence of an escape attempt from inside a container: namespace-transition syscalls, exec of escape utilities, or writes to runtime sockets.",
+      "query": "- list: container_escape_binaries\n  items: [nsenter, unshare, chroot, runc, crictl, ctr, docker, kubectl]\n\n- list: runtime_sockets\n  items: [/var/run/docker.sock, /var/run/containerd/containerd.sock, /run/crio/crio.sock]\n\n- macro: in_container\n  condition: container.id != host\n\n- rule: Container Escape Utility Executed\n  desc: A known escape utility was executed inside a container.\n  condition: spawned_process and in_container and proc.name in (container_escape_binaries)\n  output: >\n    Container escape utility executed\n    (proc=%proc.name cmdline=%proc.cmdline pid_ns=%proc.pid_ns container=%container.name\n     image=%container.image.repository user=%user.name)\n  priority: CRITICAL\n  tags: [container, mitre_privilege_escalation, T1611]\n\n- rule: Write To Runtime Socket From Container\n  desc: Write to a container runtime socket from inside a container, indicating runtime takeover.\n  condition: open_write and in_container and fd.name in (runtime_sockets)\n  output: >\n    Container wrote to runtime socket\n    (fd=%fd.name proc=%proc.name container=%container.name image=%container.image.repository)\n  priority: CRITICAL\n  tags: [container, mitre_privilege_escalation, T1611]\n",
+      "required_telemetry": [
+        "Sysdig agent (or open-source Falco) deployed as a DaemonSet on every node",
+        "Modern syscall driver (eBPF-CO-RE) loaded so namespace fields are populated",
+        "container_escape_binaries and runtime_sockets lists kept in version control"
+      ],
+      "mapped_data_components": ["Process Creation", "File Modification"],
+      "confidence": "high",
+      "false_positive_considerations": "Service mesh sidecars and node-problem-detector occasionally exec nsenter against their own namespaces; allowlist by image+command, not by name alone.",
+      "limitations": "Direct syscalls (unshare, setns, mount) bypass the binary-name rule. Add a syscall-shape rule that targets the syscall directly when feasible (eBPF profiles).",
+      "references": [
+        "https://falco.org/docs/concepts/rules/",
+        "https://falco.org/docs/concepts/rules/syscalls/"
+      ]
+    },
+    {
+      "vendor": "upwind",
+      "language": "ebpf_dsl",
+      "title": "eBPF: namespace transition or write to host-bound mount",
+      "intent": "Capture in-kernel evidence of namespace traversal or host-mount writes, the two consummating signals of an actual escape rather than just a permissive pod spec.",
+      "query": "rule: container_escape_runtime_evidence\nwhen:\n  (\n    event.kind == \"syscall\"\n    and event.syscall in [\"setns\", \"unshare\", \"pivot_root\"]\n    and process.container.id != \"\"\n    and process.namespaces.target != process.namespaces.source\n  )\n  or\n  (\n    event.kind == \"file_write\"\n    and process.container.id != \"\"\n    and (\n      file.path.startswith(\"/host\")\n      or file.path in [\n          \"/var/run/docker.sock\",\n          \"/var/run/containerd/containerd.sock\",\n          \"/run/crio/crio.sock\"\n      ]\n      or file.host_mount == true\n    )\n  )\nselect:\n  - cluster.name\n  - workload.namespace\n  - workload.name\n  - container.image\n  - process.cmdline\n  - file.path\n  - event.syscall\nseverity: critical\n",
+      "required_telemetry": [
+        "Upwind sensor (eBPF) on every node",
+        "Namespace and host-mount enrichment enabled so file.host_mount and process.namespaces.* are populated",
+        "Kubernetes correlation enabled to attribute container.id back to a workload"
+      ],
+      "mapped_data_components": ["OS API Execution", "Process Creation", "File Modification"],
+      "confidence": "high",
+      "false_positive_considerations": "Some CNI plugins legitimately call setns to set up pod networking; suppress by pod label / DaemonSet identity rather than by syscall.",
+      "limitations": "Requires a kernel new enough for the eBPF probe set; older nodes (RHEL 7-class) cannot supply this telemetry. Fall back to the Falco rule there.",
+      "references": []
+    }
+  ],
+  "references": [
+    "https://attack.mitre.org/techniques/T1611/",
+    "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Writable%20hostPath%20mount/",
+    "https://kubernetes.io/docs/concepts/policy/pod-security-admission/",
+    "https://kubernetes.io/docs/concepts/security/pod-security-standards/"
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "schema_version": "0.1.0",
+    "created": "2026-05-04",
+    "updated": "2026-05-04",
+    "contributors": ["equilibrium-bootstrap"]
+  }
+}

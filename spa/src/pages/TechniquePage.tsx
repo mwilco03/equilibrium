@@ -26,7 +26,7 @@ export function TechniquePage() {
   const editUrl = `${REPO_DATA_PATH}/${t.mitre_attack.technique_id}.json`;
 
   return (
-    <div className="mx-auto flex max-w-screen-xl flex-col gap-6 p-6">
+    <div className="mx-auto flex max-w-screen-xl flex-col gap-6 p-4 sm:p-6">
       <div className="flex items-center gap-3 text-sm">
         <Link to="/" className="flex items-center gap-1 text-cyan-400 hover:underline">
           <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -37,26 +37,15 @@ export function TechniquePage() {
       </div>
 
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <h1 className="text-xl font-semibold sm:text-2xl">{t.title}</h1>
         <p className="text-zinc-300">{t.description}</p>
         <div className="flex flex-wrap gap-3 pt-2 text-sm">
-          <a
-            href={t.mitre_attack.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-cyan-400 hover:underline"
-          >
-            MITRE ATT&CK <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </a>
+          <ExternalAnchor href={t.mitre_attack.url} label={`MITRE ATT&CK ${t.mitre_attack.technique_id}`} />
           {t.microsoft_k8s_matrix.url ? (
-            <a
+            <ExternalAnchor
               href={t.microsoft_k8s_matrix.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-cyan-400 hover:underline"
-            >
-              MS K8s Matrix <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-            </a>
+              label={`MS K8s: ${t.microsoft_k8s_matrix.name}`}
+            />
           ) : null}
           <a
             href={editUrl}
@@ -88,7 +77,19 @@ export function TechniquePage() {
                 className="rounded border border-zinc-800 bg-zinc-900/60 p-3"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-zinc-400">{ds.id}</span>
+                  {ds.url ? (
+                    <a
+                      href={ds.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 font-mono text-xs text-cyan-400 hover:underline"
+                    >
+                      {ds.id}
+                      <ExternalLink className="h-3 w-3" aria-hidden />
+                    </a>
+                  ) : (
+                    <span className="font-mono text-xs text-zinc-400">{ds.id}</span>
+                  )}
                   <span className="font-medium">{ds.name}</span>
                 </div>
                 {ds.summary ? (
@@ -113,6 +114,33 @@ export function TechniquePage() {
           ) : null}
         </div>
       </section>
+
+      {t.references && t.references.length > 0 ? (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">References</h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {t.references.map((url) => (
+              <li key={url}>
+                <ExternalAnchor href={url} label={url} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
+  );
+}
+
+function ExternalAnchor({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1 break-all text-cyan-400 hover:underline"
+    >
+      {label}
+      <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+    </a>
   );
 }

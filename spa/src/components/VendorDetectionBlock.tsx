@@ -40,6 +40,26 @@ export function VendorDetectionBlock({ vd }: { vd: VendorDetection }) {
         {vd.limitations ? (
           <Note tone="warn" label="Limitations">{vd.limitations}</Note>
         ) : null}
+
+        {vd.references && vd.references.length > 0 ? (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-zinc-500">References</div>
+            <ul className="mt-1 flex flex-col gap-1 text-sm">
+              {vd.references.map((url) => (
+                <li key={url}>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="break-all text-cyan-400 hover:underline"
+                  >
+                    {url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
     </details>
   );
