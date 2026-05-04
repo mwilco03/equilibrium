@@ -3,8 +3,7 @@
   "title": "Clear container logs",
   "description": "Attackers may delete the application or OS logs on a compromised container in an attempt to prevent detection of their activity.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1070",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Clear%20container%20logs/",
     "description": "Attackers may delete the application or OS logs on a compromised container in an attempt to prevent detection of their activity."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Log entries produced by containerized applications or container runtimes (e.g., Docker engine logs, containerd logs, application stdout/stderr). Clearing or truncating these files removes attacker-activity evidence.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Container runtime log files (e.g., /var/lib/docker/containers/<id>/<id>-json.log) truncated or deleted",
+        "Application stdout/stderr logs removed from pod log directory /var/log/pods/",
+        "Falco alert: Clear Log Activities fired inside a container context"
+      ]
+    },
+    {
+      "id": null,
+      "name": "File Deletion",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "File system events indicating removal of files. Deletion of container log files on the host node is a primary indicator of this technique.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "inotify/auditd DELETE event on /var/log/pods/<namespace>/<pod>/ files",
+        "rm or truncate syscall targeting container log paths recorded by Falco",
+        "Container log file size reduced to zero (truncation)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Command-line invocations inside a container that target log file paths, such as rm, truncate, or shell redirects to /dev/null.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "kubectl exec session issuing `rm -rf /var/log/` inside a container",
+        "Container process executing `truncate -s 0 /proc/1/fd/1` to silence stdout",
+        "Shell command `cat /dev/null > <logfile>` executed within container PID namespace"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0184",
+      "name": "Behavioral Detection of Indicator Removal Across Platforms",
+      "summary": "Detects deletion or overwriting of audit logs and container log paths post-compromise. AN0523 specifically addresses container log tampering.",
+      "url": "https://attack.mitre.org/techniques/T1070/",
+      "data_component_refs": [
+        "Application Log Content",
+        "File Deletion",
+        "Command Execution"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Clear%20container%20logs/",
@@ -40,5 +91,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1070.003",
+      "name": "Clear Command History",
+      "url": "https://attack.mitre.org/techniques/T1070/003/",
+      "relationship": "sibling_technique",
+      "rationale": "Clearing container logs often accompanies clearing command history inside the container -- both are T1070 sub-techniques performed in the same defensive-evasion session. MITRE T1070 has no sub-technique for container logs specifically, but T1070.003 (Clear Command History) is the sibling most often paired with container log clearing in incident reports. Falco's 'Delete or rename shell history' rule (tagged T1070) fires on in-container history deletion, making this a compound-detection scenario.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1070/003/",
+        "https://github.com/falcosecurity/rules/blob/main/rules/falco-incubating_rules.yaml"
+      ]
+    },
+    {
+      "technique_id": "T1070.004",
+      "name": "File Deletion",
+      "url": "https://attack.mitre.org/techniques/T1070/004/",
+      "relationship": "sibling_technique",
+      "rationale": "Container log clearing (deleting /var/log/containers/* or truncating container stdout buffers) is mechanically a file deletion operation on the host. MITRE T1070.004 (File Deletion) is the sub-technique that most precisely captures the file-system-level action. Falco's 'Remove Bulk Data from Disk' rule is tagged T1485 (impact) but the overlapping file-deletion pattern also maps to T1070.004 when the intent is evidence removal.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1070/004/"
+      ]
+    }
+  ]
 }

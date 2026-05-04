@@ -3,8 +3,7 @@
   "title": "Delete K8S events",
   "description": "A Kubernetes event is a Kubernetes object that logs state changes and failures of the resources in the cluster. Example events are a container creation, an image pull, or a pod scheduling on a node.  Kubernetes events can be very useful for identifying changes that occur in the cluster. Therefore, attackers may want to delete these events (e.g., by using: \u201ckubectl delete events\u2013all\u201d) in an attempt to avoid detection of their activity in the cluster.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1070",
@@ -25,8 +24,46 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Delete%20K8S%20events/",
     "description": "A Kubernetes event is a Kubernetes object that logs state changes and failures of the resources in the cluster. Example events are a container creation, an image pull, or a pod scheduling on a node.  Kubernetes events can be very useful for identifying changes that occur in the cluster. Therefore, attackers may want to delete these events (e.g., by using: \u201ckubectl delete events\u2013all\u201d) in an attempt to avoid detection of their activity in the cluster."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs recording DELETE verb operations against the `events` resource. This is the primary data source for detecting `kubectl delete events --all` or equivalent API calls.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit log: verb=delete, objectRef.resource=events, user.username=<principal>",
+        "API server audit event with requestObject showing bulk event deletion",
+        "Absence of expected Kubernetes events (pod creation, image pull) in the event stream after a known workload change"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Recording of kubectl or direct API calls that delete Kubernetes event objects from within a pod or from an external client.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "`kubectl delete events --all -n <namespace>` captured in audit log or shell history",
+        "Direct HTTP DELETE to /api/v1/namespaces/<ns>/events recorded in API server logs",
+        "curl or API client call deleting events via a service account token"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0184",
+      "name": "Behavioral Detection of Indicator Removal Across Platforms",
+      "summary": "AN0523 covers tampering with audit logs inside container/cluster contexts. The Sigma rule kubernetes_audit_events_deleted directly implements this for K8s event deletion.",
+      "url": "https://attack.mitre.org/techniques/T1070/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Command Execution"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Delete%20K8S%20events/",
@@ -40,5 +77,17 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1070.009",
+      "name": "Clear Persistence",
+      "url": "https://attack.mitre.org/techniques/T1070/009/",
+      "relationship": "sibling_technique",
+      "rationale": "Deleting Kubernetes events (T1070) is sometimes paired with clearing related persistent artifacts (CronJob entries, RoleBindings, audit webhook configurations). T1070.009 (Clear Persistence) covers removing previously established persistence mechanisms to hinder forensics. In post-incident Kubernetes forensics, adversaries are documented deleting both events and the RBAC/CronJob objects that generated them as a compound clean-up operation.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1070/009/"
+      ]
+    }
+  ]
 }

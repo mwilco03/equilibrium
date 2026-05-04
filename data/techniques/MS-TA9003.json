@@ -3,8 +3,7 @@
   "title": "Kubeconfig file",
   "description": "The kubeconfig file, also used by kubectl, contains details about Kubernetes clusters including their location and credentials. If the cluster is hosted as a cloud service (such as AKS or GKE), this file is downloaded to the client via cloud commands (e.g., `az aks get-credential` for AKS or `gcloud container clusters get-credentials` for GKE).   If attackers get access to this file, for instance via a compromised client, they can use it for accessing the clusters.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": null,
   "microsoft_k8s_matrix": {
@@ -14,7 +13,47 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Kubeconfig%20file/",
     "description": "The kubeconfig file, also used by kubectl, contains details about Kubernetes clusters including their location and credentials. If the cluster is hosted as a cloud service (such as AKS or GKE), this file is downloaded to the client via cloud commands (e.g., `az aks get-credential` for AKS or `gcloud container clusters get-credentials` for GKE).   If attackers get access to this file, for instance via a compromised client, they can use it for accessing the clusters."
   },
-  "data_components": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "File Access",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "File system read events on kubeconfig file paths (e.g., ~/.kube/config, /etc/kubernetes/admin.conf, /root/.kube/config) by processes or users that do not normally need cluster credential access.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Linux auditd: syscall=open, path=~/.kube/config or /etc/kubernetes/admin.conf, exe not in [kubectl, kubeadm, cloud-provider-daemon]",
+        "Falco event: open_read with sensitive kubeconfig path by untrusted process",
+        "Windows Sysmon Event ID 11 (FileCreate) or Event ID 23 on %USERPROFILE%\\.kube\\config by unexpected processes"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Execution of cloud CLI commands that download or update kubeconfig files (az aks get-credentials, gcloud container clusters get-credentials, aws eks update-kubeconfig), potentially indicating an attacker attempting to obtain valid cluster credentials.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "Process creation: az aks get-credentials or gcloud container clusters get-credentials executed by non-admin user or at anomalous time",
+        "AWS CloudTrail: UpdateKubeconfig API call from unexpected IAM principal",
+        "Shell history or auditd EXECVE record for kubectl config set-credentials with base64 certificate data"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit log showing successful authentication with credentials that match a known kubeconfig pattern but originate from an unexpected client IP or user agent, indicating use of a stolen kubeconfig.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit event: user.groups contains system:masters or high-privilege group, sourceIPs not matching any known admin workstation or CI/CD IP range",
+        "Kubernetes audit event: userAgent=kubectl/<version> from IP outside corporate egress range after business hours",
+        "Kubernetes audit event: verb=get, objectRef.resource=secrets, user.username=admin from new geographic location"
+      ]
+    }
+  ],
   "detection_strategies": [],
   "vendor_detections": [],
   "references": [
@@ -28,5 +67,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1552.001",
+      "name": "Credentials In Files",
+      "url": "https://attack.mitre.org/techniques/T1552/001/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "A kubeconfig file is a credential file on disk: it contains cluster endpoint, CA certificate, client certificates, and/or bearer tokens. MITRE T1552.001 explicitly covers reading credential material from files on disk, and its detection text calls out container/orchestration credential paths including '~/.kube/config' and service token files. This is the most precise MITRE mapping for the kubeconfig-file exfiltration scenario.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/001/"
+      ]
+    },
+    {
+      "technique_id": "T1078.003",
+      "name": "Local Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/003/",
+      "relationship": "downstream_capability",
+      "rationale": "After reading the kubeconfig file (T1552.001), an adversary uses the embedded credentials to authenticate as a valid Kubernetes user (T1078.003). MITRE's T1078.003 page specifically calls out Kubernetes service accounts and recommends auditing their use. The kubeconfig theft scenario is a two-step chain: credential read (T1552.001) followed by valid-account abuse (T1078.003).",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1078/003/"
+      ]
+    }
+  ]
 }

@@ -3,8 +3,7 @@
   "title": "Pod or container name similarily",
   "description": "Pods that are created by controllers such as Deployment or DaemonSet have random suffix in their names. Attackers can use this fact and name their backdoor pods as they were created by the existing controllers. For example, an attacker could create a malicious pod named coredns-{random suffix} which would look related to the CoreDNS Deployment.  Also, attackers can deploy their containers in the kube-system namespace where the administrative containers reside.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1036.005",
@@ -25,8 +24,84 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Pod%20or%20container%20name%20similarily/",
     "description": "Pods that are created by controllers such as Deployment or DaemonSet have random suffix in their names. Attackers can use this fact and name their backdoor pods as they were created by the existing controllers. For example, an attacker could create a malicious pod named coredns-{random suffix} which would look related to the CoreDNS Deployment.  Also, attackers can deploy their containers in the kube-system namespace where the administrative containers reside."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Image Metadata",
+      "data_source_id": "DS0007",
+      "data_source_name": "Image",
+      "definition": "Container image name, tag, registry path, and layer hashes. An attacker deploying a malicious image named `kube-system/coredns` or similar mimics legitimate workloads.",
+      "url": "https://attack.mitre.org/datasources/DS0007/",
+      "relevant_events": [
+        "Pod spec referencing an image name that matches a system component but originates from an unexpected registry",
+        "Image pull from a non-allowlisted registry for a pod named to resemble kube-system workloads",
+        "OPA/Gatekeeper admission webhook rejecting image name mismatch against allowlist"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Process Metadata",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "Process name, binary path, and parent process information. A container running with a name matching a system daemon but spawning unexpected child processes is an indicator.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Process named `kube-proxy` or `coredns` spawning a shell or network scanner",
+        "Executable binary hash mismatch vs. known-good for a process bearing a legitimate system name",
+        "Process created in a pod whose name matches a kube-system component but runs in a different namespace"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Process Creation",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "New process creation events from container workloads. Processes in pods with deceptive names that deviate from expected command lines indicate masquerading.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Kubernetes audit: pod created in kube-system namespace with user-defined service account",
+        "Falco: process spawned in container whose pod name matches a system workload pattern but has anomalous args",
+        "AN0986 fires: container/pod name or namespace mimics legitimate workload, image layer inconsistency detected"
+      ]
+    },
+    {
+      "id": null,
+      "name": "File Metadata",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Binary and configuration file metadata inside containers. Comparing hashes of running binaries against known-good images surfaces name-spoofed containers.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Binary in container filesystem with a legitimate system name but unexpected hash",
+        "File created in /usr/bin/ inside a container with a name matching a system tool but different size",
+        "Image layer diff showing replacement of a legitimate binary with a malicious one of the same name"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0127",
+      "name": "Behavioral Detection of Masquerading Across Platforms via Metadata and Execution Discrepancy",
+      "summary": "AN0358 specifically targets renamed container images and files with misleading names injected into containers during startup or scheduled jobs.",
+      "url": "https://attack.mitre.org/techniques/T1036/",
+      "data_component_refs": [
+        "Image Metadata",
+        "Process Metadata",
+        "Process Creation"
+      ]
+    },
+    {
+      "id": "DET0347",
+      "name": "Detection Strategy for Masquerading via Legitimate Resource Name or Location",
+      "summary": "AN0986 recognizes malicious containers or pods using names, labels, or namespaces mimicking legitimate workloads and checks for image layer inconsistencies.",
+      "url": "https://attack.mitre.org/techniques/T1036/005/",
+      "data_component_refs": [
+        "Image Metadata",
+        "Process Creation",
+        "File Metadata"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Pod%20or%20container%20name%20similarily/",
@@ -41,5 +116,18 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1610",
+      "name": "Deploy Container",
+      "url": "https://attack.mitre.org/techniques/T1610/",
+      "relationship": "upstream_precondition",
+      "rationale": "Name masquerading (T1036.005) occurs at the moment a container or pod is deployed with a deceptive name (T1610). The Sigma rule 'kubernetes_audit_pod_in_system_namespace' is tagged T1036.005 and fires on pod creation events in kube-system -- a pod-creation (T1610) event that carries a legitimate-looking name in a sensitive namespace. The masquerade technique cannot exist without the deploy event.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_pod_in_system_namespace.yml",
+        "https://attack.mitre.org/techniques/T1610/"
+      ]
+    }
+  ]
 }

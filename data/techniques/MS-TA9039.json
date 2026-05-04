@@ -3,8 +3,7 @@
   "title": "Resource hijacking",
   "description": "Attackers may abuse a compromised resource for running tasks. A common abuse is to use compromised resources for running digital currency mining. Attackers who have access to a container in the cluster or have permissions to create new containers may use them for such activity.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1496",
@@ -25,8 +24,88 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Resource%20hijacking/",
     "description": "Attackers may abuse a compromised resource for running tasks. A common abuse is to use compromised resources for running digital currency mining. Attackers who have access to a container in the cluster or have permissions to create new containers may use them for such activity."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Process Creation",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "New processes within containers running cryptocurrency mining tools or CPU/GPU intensive workloads inconsistent with the expected container function.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Container spawning a process named xmrig, cpuminer, or similar mining binary",
+        "Process with high CPU usage executing from /tmp or /dev/shm (non-standard paths) inside a container",
+        "Container running a process not present in the declared image entrypoint or CMD"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Network connections to known mining pool endpoints or stratum protocol traffic from within the cluster. Mining operations require connectivity to external pool servers.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Pod establishing outbound TCP connection to a known mining pool IP or domain (stratum port 3333, 4444, 14444)",
+        "Container generating consistent high-volume outbound traffic to a single external endpoint",
+        "DNS resolution of known mining pool domains (pool.minexmr.com, xmrpool.eu) from within the cluster"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Commands that download or execute mining binaries inside containers, often using curl/wget followed by execution of a downloaded payload.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "Container executing `curl -o /tmp/miner <url> && chmod +x /tmp/miner && /tmp/miner`",
+        "kubectl exec session installing and running a miner inside a running pod",
+        "Container deployment via kubectl apply of a DaemonSet running a mining image on every node"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Connection Creation",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "New outbound connections from containers to mining infrastructure. The consistent pattern of mining pool connectivity is highly anomalous in production workloads.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "New TCP connection to stratum+tcp:// endpoints from a container",
+        "WebSocket connection to a browser-based mining service from a container",
+        "Container repeatedly reconnecting to the same external IP on port 3333 or 4444"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Host Status",
+      "data_source_id": "DS0013",
+      "data_source_name": "Sensor Health",
+      "definition": "Node-level resource utilization metrics. Sustained CPU spike on a node hosting a compromised container is a secondary indicator of mining activity.",
+      "url": "https://attack.mitre.org/datasources/DS0013/",
+      "relevant_events": [
+        "Node CPU usage sustained above 90% with no corresponding legitimate workload scale-out",
+        "cgroup CPU throttling events for a container not under any active load",
+        "Kubernetes metrics-server: pod CPU request vs. actual usage anomaly (actual >> requested)"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0267",
+      "name": "Resource Hijacking Detection Strategy",
+      "summary": "AN0745 monitors high CPU usage within containers running mining tools or proxy utilities. AN0744 covers cloud VM CPU spikes with mining pool traffic.",
+      "url": "https://attack.mitre.org/techniques/T1496/",
+      "data_component_refs": [
+        "Process Creation",
+        "Network Traffic Flow",
+        "Network Connection Creation",
+        "Host Status",
+        "Command Execution"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Resource%20hijacking/",
@@ -40,5 +119,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1496.001",
+      "name": "Compute Hijacking",
+      "url": "https://attack.mitre.org/techniques/T1496/001/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "T1496.001 (Compute Hijacking) is the sub-technique specifically covering cryptomining and CPU/GPU resource hijacking in container and cloud environments. MITRE T1496.001 explicitly states: 'Containerized environments may also be targeted due to the ease of deployment via exposed APIs and the potential for scaling mining activities by deploying or compromising multiple containers.' TeamTNT deploying XMRig Docker images is cited as a procedure example. The parent T1496 is the current primary; T1496.001 is more specific and correct for K8s cryptomining.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1496/001/"
+      ]
+    },
+    {
+      "technique_id": "T1610",
+      "name": "Deploy Container",
+      "url": "https://attack.mitre.org/techniques/T1610/",
+      "relationship": "upstream_precondition",
+      "rationale": "Resource hijacking in Kubernetes is most commonly implemented by deploying malicious mining containers (T1610) -- TeamTNT's attack chain deploys XMRig containers to mine Monero. The deploy event (T1610) is the precondition that operationalizes the resource hijacking (T1496.001). Atomic Red Team T1610 cites Kinsing, which uses exactly this pattern.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1610/",
+        "https://attack.mitre.org/techniques/T1496/001/"
+      ]
+    }
+  ]
 }

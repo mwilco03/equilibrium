@@ -3,8 +3,7 @@
   "title": "Access cloud resources",
   "description": "If the Kubernetes cluster is deployed in the cloud, in some cases attackers can leverage their access to a single container to get access to other cloud resources outside the cluster. For example, AKS uses several managed identities that are attached to the nodes, for the cluster operation. Similar identities exist also in EKS and GKE (EC2 roles and IAM service accounts, respectively). By default, running pods can retrieve the identities which in some configurations have privileged permissions. Therefore, if attackers gain access to a running pod in the cluster, they can leverage the identities to access external cloud resources.  Also, AKS has an option to authenticate with Azure using a service principal. When this option is enabled, each node stores service principal credentials that are located in /etc/kubernetes/azure.json. AKS uses this service principal to create and manage Azure resources that are needed for the cluster operation. By default, the service principal has contributor permissions in the cluster\u2019s Resource Group. Attackers who get access to this service principal file (by hostPath mount, for example) can use its credentials to access or modify the cloud resources.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1078.004",
@@ -28,8 +27,83 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20cloud%20resources/",
     "description": "If the Kubernetes cluster is deployed in the cloud, in some cases attackers can leverage their access to a single container to get access to other cloud resources outside the cluster. For example, AKS uses several managed identities that are attached to the nodes, for the cluster operation. Similar identities exist also in EKS and GKE (EC2 roles and IAM service accounts, respectively). By default, running pods can retrieve the identities which in some configurations have privileged permissions. Therefore, if attackers gain access to a running pod in the cluster, they can leverage the identities to access external cloud resources.  Also, AKS has an option to authenticate with Azure using a service principal. When this option is enabled, each node stores service principal credentials that are located in /etc/kubernetes/azure.json. AKS uses this service principal to create and manage Azure resources that are needed for the cluster operation. By default, the service principal has contributor permissions in the cluster\u2019s Resource Group. Attackers who get access to this service principal file (by hostPath mount, for example) can use its credentials to access or modify the cloud resources."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Cloud provider audit logs and Kubernetes audit logs recording API calls made from pods using cloud-managed identities (managed identity tokens, EC2 instance profile, GCP Workload Identity), especially calls to services outside the cluster's expected scope.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "AWS CloudTrail: API call from EC2 instance role (node identity) or pod-assumed IAM role for S3, IAM, or EC2 operations not normally performed by the cluster",
+        "Azure Activity Log: operation from AKS managed identity (type=ManagedIdentity) accessing Key Vault, Storage Account, or subscription-level resources",
+        "GCP Cloud Audit Log: API call using a Workload Identity-mapped service account accessing GCS, BigQuery, or IAM admin APIs from unexpected pod"
+      ]
+    },
+    {
+      "id": null,
+      "name": "File Access",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Read access to cloud credential files on the cluster node (e.g., /etc/kubernetes/azure.json for AKS service principal, /var/lib/kubelet/kubeconfig) from container processes via hostPath mounts, which is the file-based credential theft vector.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Linux auditd: open_read syscall on /etc/kubernetes/azure.json by a process not in [kubelet, cloud-controller-manager]",
+        "Falco: read_sensitive_file_untrusted - proc reading /etc/kubernetes/azure.json or /var/lib/kubelet/kubeconfig with proc.name not in trusted kubelet processes",
+        "Kubernetes audit event: verb=create on pod with spec.volumes[].hostPath.path matching /etc/kubernetes/ or /var/lib/kubelet/"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Connection Creation",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Outbound network connections from pods to the cloud metadata service endpoint (169.254.169.254 or platform-specific alternatives), indicating an attempt to retrieve cloud identity tokens or configuration data.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Network flow: TCP connection from pod to 169.254.169.254:80 by process not in [kubelet, cloud-controller-manager, node-local-dns]",
+        "Network flow: HTTP GET to http://169.254.169.254/metadata/identity/oauth2/token (Azure IMDS) or http://169.254.169.254/latest/meta-data/iam/security-credentials/ (AWS IMDS) from application container",
+        "Falco: container process opening connection to 169.254.169.254 when container is not expected to use managed identity"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Logon Session Creation",
+      "data_source_id": "DS0028",
+      "data_source_name": "Logon Session",
+      "definition": "Cloud IAM token issuance events triggered by pods requesting temporary credentials via the Instance Metadata Service or Workload Identity federation, where the requesting pod's identity or IP is unexpected.",
+      "url": "https://attack.mitre.org/datasources/DS0028/",
+      "relevant_events": [
+        "AWS: STS AssumeRoleWithWebIdentity or AssumeRole call using EKS pod identity token from unexpected namespace or service account",
+        "Azure: IMDS token request from a node IP not associated with a known workload that requires cloud resource access",
+        "GCP: google.oauth2.service_accounts.generateAccessToken called for Workload Identity-mapped service account from pod in unexpected namespace"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0546",
+      "name": "Detection of Abused or Compromised Cloud Accounts for Access and Persistence",
+      "summary": "AN1503-AN1506 cover anomalous cloud account authentication patterns. AN1504 specifically targets API calls exceeding normal scope (e.g., IAM changes or access to services never used before), which is the pattern when a pod accesses cloud resources it should not reach.",
+      "url": "https://attack.mitre.org/techniques/T1078/004/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Logon Session Creation"
+      ]
+    },
+    {
+      "id": "DET0560",
+      "name": "Detection of Valid Account Abuse Across Platforms",
+      "summary": "AN1547 covers containerized service account or compromised kubeconfig being used for cluster access from unexpected nodes or IPs. This extends to cloud resource access made using the pod's cloud identity.",
+      "url": "https://attack.mitre.org/techniques/T1078/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Logon Session Creation",
+        "Network Connection Creation"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20cloud%20resources/",
@@ -44,5 +118,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1552.005",
+      "name": "Cloud Instance Metadata API",
+      "url": "https://attack.mitre.org/techniques/T1552/005/",
+      "relationship": "upstream_precondition",
+      "rationale": "A common path to accessing cloud resources from within a Kubernetes cluster is querying the Instance Metadata Service (169.254.169.254) to obtain a cloud identity token, then using that token (T1078.004) to access cloud APIs. T1552.005 captures the credential-acquisition step; T1078.004 captures the use of those credentials to access cloud resources. The Falco incubating rule 'Contact EC2 Instance Metadata Service From Container' (tagged T1552.005) fires on the precondition step.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/005/",
+        "https://github.com/falcosecurity/rules/blob/main/rules/falco-incubating_rules.yaml"
+      ]
+    },
+    {
+      "technique_id": "T1530",
+      "name": "Data from Cloud Storage",
+      "url": "https://attack.mitre.org/techniques/T1530/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE T1530 page explicitly mentions T1059.009 (Cloud API) as the method for accessing cloud storage resources. Accessing cloud resources with compromised cloud credentials (T1078.004) commonly targets cloud storage buckets (S3, Azure Blob, GCS) -- T1530 captures this specific downstream action. MITRE T1530 also specifically mentions that 'credential compromise' is the primary enabling precondition.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1530/"
+      ]
+    }
+  ]
 }

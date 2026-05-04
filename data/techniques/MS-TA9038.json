@@ -3,8 +3,7 @@
   "title": "Data destruction",
   "description": "Attackers may attempt to destroy data and resources in the cluster. This includes deleting deployments, configurations, storage, and compute resources.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1485",
@@ -25,8 +24,88 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Data%20destruction/",
     "description": "Attackers may attempt to destroy data and resources in the cluster. This includes deleting deployments, configurations, storage, and compute resources."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "File Deletion",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Deletion of files within container volumes or host-path mounts. Destructive commands (rm -rf, shred, dd) targeting mounted persistent volume data are the primary indicator.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Container process executing `rm -rf /data/*` on a mounted PersistentVolume",
+        "Falco: Remove Bulk Data from Disk fired inside a container accessing a host or volume path",
+        "auditd: unlink() syscalls on critical application data files within a pod"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Process Creation",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "New process creation within containers running destructive tools such as rm, shred, dd, or custom wiper binaries.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Container spawning `dd if=/dev/zero of=/data/db/...` to overwrite database files",
+        "Process `shred` or `wipe` running inside a pod with access to persistent storage",
+        "AN0416: container process executes destructive file operations inside volume mounts or host paths"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Destructive kubectl or API commands that delete Kubernetes workload resources, PersistentVolumeClaims, Deployments, or namespace objects.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "`kubectl delete namespace <ns>` deleting all workloads and their data",
+        "`kubectl delete pvc --all` removing persistent volume claims and triggering volume deletion",
+        "API audit: delete verb on deployments, statefulsets, or PVCs by an unexpected principal"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Instance Deletion",
+      "data_source_id": "DS0030",
+      "data_source_name": "Instance",
+      "definition": "Cloud instance deletion events. In cloud-hosted K8s (AKS, EKS, GKE), an attacker with cloud credentials may delete the underlying node instances, taking down the cluster.",
+      "url": "https://attack.mitre.org/datasources/DS0030/",
+      "relevant_events": [
+        "Azure: VM delete operation on a node pool instance",
+        "AWS: TerminateInstances called on EKS worker node EC2 instances",
+        "GCP: compute.instances.delete on GKE node pool members"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Volume Deletion",
+      "data_source_id": "DS0034",
+      "data_source_name": "Volume",
+      "definition": "Cloud storage volume deletion events, including PersistentVolume backing storage (EBS, Azure Disk, GCP PD) being deleted via cloud APIs.",
+      "url": "https://attack.mitre.org/datasources/DS0034/",
+      "relevant_events": [
+        "AWS EBS volume deletion for a disk that was backing a K8s PersistentVolume",
+        "Azure: managed disk delete on a volume backing a StatefulSet",
+        "Kubernetes PersistentVolume reclaim policy set to Delete, triggered by PVC deletion"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0146",
+      "name": "Detection of Data Destruction Across Platforms via Mass Overwrite and Deletion Patterns",
+      "summary": "AN0416 specifically addresses container processes executing destructive file operations inside volume mounts or host paths. AN0414 covers cloud infrastructure deletion.",
+      "url": "https://attack.mitre.org/techniques/T1485/",
+      "data_component_refs": [
+        "File Deletion",
+        "Process Creation",
+        "Command Execution",
+        "Instance Deletion",
+        "Volume Deletion"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Data%20destruction/",
@@ -40,5 +119,17 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1485.001",
+      "name": "Lifecycle-Triggered Deletion",
+      "url": "https://attack.mitre.org/techniques/T1485/001/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "T1485.001 (Lifecycle-Triggered Deletion) covers configuring cloud object lifecycle policies to auto-delete data. In Kubernetes environments with cloud-backed persistent volumes (EBS, Azure Disk, GCS), an adversary with cloud credentials (T1078.004) can configure lifecycle rules that cause data deletion -- a subtler destruction path than directly deleting files. T1485.001 is the more specific sub-technique for this Kubernetes-plus-cloud storage scenario.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1485/001/"
+      ]
+    }
+  ]
 }

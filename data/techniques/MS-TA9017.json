@@ -3,8 +3,7 @@
   "title": "Static Pods",
   "description": "Static Pods are created and managed by the the kubelet daemon on each node, without the API server observing them. Kubelet watches each static pod and restart it if it fails.    Kubelet automatically tries to create a mirror pod on the Kubernetes API server to represent the static pods, so it will be visible on the API server, however the pods cannot be controlled from there.  Static Pods are created based on a web or local filesystem YAML files which kubelet observes for changes. An attacker can use the static pods manifest file to ensure that a pod is always running on a cluster node and prevent it from being changed or deleted from the Kubernetes API server.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": null,
   "microsoft_k8s_matrix": {
@@ -14,7 +13,47 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Static%20Pods/",
     "description": "Static Pods are created and managed by the the kubelet daemon on each node, without the API server observing them. Kubelet watches each static pod and restart it if it fails.    Kubelet automatically tries to create a mirror pod on the Kubernetes API server to represent the static pods, so it will be visible on the API server, however the pods cannot be controlled from there.  Static Pods are created based on a web or local filesystem YAML files which kubelet observes for changes. An attacker can use the static pods manifest file to ensure that a pod is always running on a cluster node and prevent it from being changed or deleted from the Kubernetes API server."
   },
-  "data_components": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "File Creation",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "File system creation or modification events on the kubelet's static pod manifest directory (default: /etc/kubernetes/manifests/), where an attacker writes a new YAML file to cause kubelet to start a persistent container outside API server control.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Linux auditd: audit rule on -w /etc/kubernetes/manifests/ -p wa -k static_pod_manifest - any write or attribute change to the directory",
+        "inotifywait: IN_CREATE or IN_MODIFY event on /etc/kubernetes/manifests/*.yaml or *.json",
+        "Falco: open_write with fd.name matching /etc/kubernetes/manifests/*.yaml by process not in [kubeadm, kubelet, known-upgrade-script]"
+      ]
+    },
+    {
+      "id": null,
+      "name": "File Modification",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Modification of existing static pod manifest files to alter the image, command, or security context of existing system pods (e.g., kube-apiserver.yaml, etcd.yaml), representing a high-impact persistence path.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Linux auditd: WRITE syscall on /etc/kubernetes/manifests/kube-apiserver.yaml or any existing manifest by non-kubelet process",
+        "File integrity monitoring alert: hash change on /etc/kubernetes/manifests/*.yaml",
+        "Git/version-control event: change committed to infrastructure-as-code static pod manifest files outside normal change window"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Pod Creation",
+      "data_source_id": "DS0014",
+      "data_source_name": "Pod",
+      "definition": "Mirror pod creation events on the Kubernetes API server that represent kubelet-managed static pods. A new mirror pod with no corresponding Deployment or DaemonSet owner, running on a specific node, indicates a static pod was started.",
+      "url": "https://attack.mitre.org/datasources/DS0014/",
+      "relevant_events": [
+        "Kubernetes audit event: pod creation where pod name ends with node hostname suffix (static pod naming convention, e.g., attacker-pod-node01)",
+        "Kubernetes event: pod with ownerReferences=[] and annotations['kubernetes.io/config.source']=file on a specific node",
+        "Kubernetes API: GET pods --field-selector spec.nodeName=<node> showing pod with no Deployment/RS owner reference and suspicious image"
+      ]
+    }
+  ],
   "detection_strategies": [],
   "vendor_detections": [],
   "references": [
@@ -28,5 +67,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1543.005",
+      "name": "Container Service",
+      "url": "https://attack.mitre.org/techniques/T1543/005/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "A static pod is a pod defined by a manifest file on a node's filesystem (/etc/kubernetes/manifests/) and managed directly by kubelet, not the API server. Placing a malicious manifest there creates a persistent container service that restarts automatically -- this is precisely the pattern T1543.005 (Container Service) covers: 'adversaries may create or modify container service configurations to survive system restarts.' Static pods are invisible to kubectl by design and constitute a stealth persistence mechanism.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1543/005/",
+        "https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/"
+      ]
+    },
+    {
+      "technique_id": "T1611",
+      "name": "Escape to Host",
+      "url": "https://attack.mitre.org/techniques/T1611/",
+      "relationship": "upstream_precondition",
+      "rationale": "Writing a static pod manifest to /etc/kubernetes/manifests/ requires write access to the host node filesystem. An attacker who has escaped to the host (T1611) can plant a static pod manifest as a persistent backdoor. The sequence is T1611 (host escape) -> write manifest -> static pod becomes persistence. The Atomic Red Team T1611 test 2 explicitly demonstrates that host filesystem write is the outcome of container escape.",
+      "sources": [
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1611/T1611.md"
+      ]
+    }
+  ]
 }

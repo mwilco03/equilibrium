@@ -3,8 +3,7 @@
   "title": "Access Kubelet API",
   "description": "Kubelet is the Kubernetes agent that is installed on each node. Kubelet is responsible for the proper execution of pods that are assigned to the node. Kubelet exposes a read-only API service that does not require authentication (TCP port 10255). Attackers with network access to the host (for example, via running code on a compromised container) can send API requests to the Kubelet API. Specifically querying https://[NODE IP]:10255/pods/ retrieves the running pods on the node. https://[NODE IP]:10255/spec/ retrieves information about the node itself, such as CPU and memory consumption.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1613",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20Kubelet%20API/",
     "description": "Kubelet is the Kubernetes agent that is installed on each node. Kubelet is responsible for the proper execution of pods that are assigned to the node. Kubelet exposes a read-only API service that does not require authentication (TCP port 10255). Attackers with network access to the host (for example, via running code on a compromised container) can send API requests to the Kubelet API. Specifically querying https://[NODE IP]:10255/pods/ retrieves the running pods on the node. https://[NODE IP]:10255/spec/ retrieves information about the node itself, such as CPU and memory consumption."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Container Enumeration",
+      "data_source_id": "DS0032",
+      "data_source_name": "Container",
+      "definition": "Container enumeration events via the Kubelet read-only API (TCP 10255). Queries to /pods/ expose all running containers on the node without authentication.",
+      "url": "https://attack.mitre.org/datasources/DS0032/",
+      "relevant_events": [
+        "HTTP GET to <node-ip>:10255/pods returning the full pod manifest list",
+        "Access to <node-ip>:10255/spec returning node hardware and resource information",
+        "Network flow showing a pod IP making requests to port 10255 on node IPs"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Network connections to the Kubelet ports (10250 authenticated, 10255 read-only unauthenticated) from unexpected sources. Container-to-Kubelet traffic is anomalous unless explicitly required.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Pod-sourced TCP connection to port 10255 on any node IP",
+        "External-sourced connection to port 10250 attempting to use kubectl exec via Kubelet directly",
+        "Network policy audit log: egress to node:10255 blocked for a non-system pod"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Pod Enumeration",
+      "data_source_id": "DS0014",
+      "data_source_name": "Pod",
+      "definition": "Pod listing via Kubelet endpoint rather than the API server. The /pods/ endpoint on port 10255 returns pod specs without authentication, enabling enumeration that bypasses API server audit logging.",
+      "url": "https://attack.mitre.org/datasources/DS0014/",
+      "relevant_events": [
+        "HTTP request to http://<kubelet-ip>:10255/pods from a container workload",
+        "Response containing pod specs with environment variables and volume mounts",
+        "Access log from node-level HTTP server on port 10255 (if enabled)"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0490",
+      "name": "Detection Strategy for Container and Resource Discovery",
+      "summary": "AN1352 covers container metadata endpoint queries. Kubelet port 10255 is a container metadata endpoint and falls within this strategy's scope.",
+      "url": "https://attack.mitre.org/techniques/T1613/",
+      "data_component_refs": [
+        "Container Enumeration",
+        "Pod Enumeration",
+        "Network Traffic Flow"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20Kubelet%20API/",
@@ -40,5 +91,29 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1046",
+      "name": "Network Service Discovery",
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "relationship": "upstream_precondition",
+      "rationale": "The Hildegard malware campaign used masscan to discover kubelet API ports across the cluster network before accessing them -- this is precisely the T1046 precondition step. MITRE T1613 procedure text cites Hildegard for this pattern. Atomic Red Team T1046 test 9 covers container network service discovery.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1613/",
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1046/T1046.md"
+      ]
+    },
+    {
+      "technique_id": "T1609",
+      "name": "Container Administration Command",
+      "url": "https://attack.mitre.org/techniques/T1609/",
+      "relationship": "downstream_capability",
+      "rationale": "The kubelet API (port 10250) exposes an /exec endpoint that allows running commands inside pods without going through the API server. Accessing kubelet API (T1613) for discovery directly enables remote exec into containers (T1609). Peirates and other K8s attack tools enumerate the kubelet API specifically to discover and then exec into running containers.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1609/",
+        "https://attack.mitre.org/techniques/T1613/"
+      ]
+    }
+  ]
 }

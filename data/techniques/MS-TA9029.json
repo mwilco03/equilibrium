@@ -3,8 +3,7 @@
   "title": "Access the K8S API server",
   "description": "The Kubernetes API server is the gateway to the cluster. Actions in the cluster are performed by sending various requests to the RESTful API. The status of the cluster, which includes all the components that are deployed on it, can be retrieved by the API server. Attackers may send API requests to probe the cluster and get information about containers, secrets, and other resources in the cluster.  In addition, the Kubernetes API server can also be used to query information about Role Based Access (RBAC) information such as Roles, ClusterRoles, RoleBinding, ClusterRoleBinding and Service Accounts. Attacker may use this information to discover permissions and access associated with Service Accounts in the cluster and use this information to progress towards its attack objectives.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1613",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20the%20K8S%20API%20server/",
     "description": "The Kubernetes API server is the gateway to the cluster. Actions in the cluster are performed by sending various requests to the RESTful API. The status of the cluster, which includes all the components that are deployed on it, can be retrieved by the API server. Attackers may send API requests to probe the cluster and get information about containers, secrets, and other resources in the cluster.  In addition, the Kubernetes API server can also be used to query information about Role Based Access (RBAC) information such as Roles, ClusterRoles, RoleBinding, ClusterRoleBinding and Service Accounts. Attacker may use this information to discover permissions and access associated with Service Accounts in the cluster and use this information to progress towards its attack objectives."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Container Enumeration",
+      "data_source_id": "DS0032",
+      "data_source_name": "Container",
+      "definition": "Events recording enumeration of container or pod resources via the Kubernetes API. An attacker querying the API server for pods, deployments, or services is performing container enumeration.",
+      "url": "https://attack.mitre.org/datasources/DS0032/",
+      "relevant_events": [
+        "kubectl get pods --all-namespaces returning full cluster workload inventory",
+        "API server audit: list verb on pods, deployments, replicasets by an unexpected principal",
+        "Falco: Contact K8S API Server From Container rule firing for a service account making cluster-wide list calls"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Pod Enumeration",
+      "data_source_id": "DS0014",
+      "data_source_name": "Pod",
+      "definition": "Events recording enumeration of pod objects in Kubernetes. Listing pods reveals running workloads, namespaces, labels, and associated service accounts.",
+      "url": "https://attack.mitre.org/datasources/DS0014/",
+      "relevant_events": [
+        "API audit: GET /api/v1/pods returning full pod list across namespaces",
+        "kubectl get pod -o wide revealing node assignments and IP addresses",
+        "Repeated pod list queries by a service account with no deployment-management role"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs. All API server interactions are logged here; anomalous enumeration patterns are the primary K8s detection mechanism for this technique.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Burst of list/get requests across multiple resource types from a single principal in a short window",
+        "API server access from a source IP not matching any known node or administrator workstation",
+        "Requests to /apis/ (API discovery endpoint) indicating initial cluster reconnaissance"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0490",
+      "name": "Detection Strategy for Container and Resource Discovery",
+      "summary": "AN1352 detects anomalous API calls to Docker or Kubernetes such as kubectl get pods and kubectl get nodes, correlating with user context and network activity.",
+      "url": "https://attack.mitre.org/techniques/T1613/",
+      "data_component_refs": [
+        "Container Enumeration",
+        "Pod Enumeration",
+        "Application Log Content"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20the%20K8S%20API%20server/",
@@ -40,5 +91,29 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1046",
+      "name": "Network Service Discovery",
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "relationship": "upstream_precondition",
+      "rationale": "Before querying the Kubernetes API server an adversary must locate it. Atomic Red Team T1046 test 9 ('Network Service Discovery for Containers') explicitly covers scanning for Kubernetes API and kubelet ports in a container network. MITRE T1210 (Exploitation of Remote Services) also notes that 'Network Service Discovery' (T1046) precedes exploitation; the same precondition applies to API server access.",
+      "sources": [
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1046/T1046.md",
+        "https://attack.mitre.org/techniques/T1046/"
+      ]
+    },
+    {
+      "technique_id": "T1552.007",
+      "name": "Container API",
+      "url": "https://attack.mitre.org/techniques/T1552/007/",
+      "relationship": "downstream_capability",
+      "rationale": "Accessing the Kubernetes API server (T1613 discovery) enables credential harvesting via the API (T1552.007). MITRE T1552.007 specifically covers 'querying the Kubernetes API for secrets' -- this is a direct downstream use of API server access. The Sigma rule 'kubernetes_audit_secrets_enumeration' (tagged T1552.007) fires on the follow-on action that T1613/API-server access makes possible.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/007/",
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_secrets_enumeration.yml"
+      ]
+    }
+  ]
 }

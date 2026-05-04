@@ -3,8 +3,7 @@
   "title": "List K8S secrets",
   "description": "A Kubernetes secret is an object that lets users store and manage sensitive information, such as passwords and connection strings in the cluster. Secrets can be consumed by reference in the pod configuration. Attackers who have permissions to retrieve the secrets from the API server (by using the pod service account, for example) can access sensitive information that might include credentials to various services.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1552.007",
@@ -25,8 +24,70 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/List%20K8S%20secrets/",
     "description": "A Kubernetes secret is an object that lets users store and manage sensitive information, such as passwords and connection strings in the cluster. Secrets can be consumed by reference in the pod configuration. Attackers who have permissions to retrieve the secrets from the API server (by using the pod service account, for example) can access sensitive information that might include credentials to various services."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs recording list/get operations on the `secrets` resource. This is the canonical detection source for this technique.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit: verb=list, objectRef.resource=secrets, user.username=<service account or user>",
+        "Kubernetes audit: verb=get, objectRef.resource=secrets, objectRef.name=<specific secret name>",
+        "API request to /api/v1/secrets (cluster-wide) or /api/v1/namespaces/<ns>/secrets"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Recording of kubectl commands or direct API calls listing or getting Kubernetes secrets.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "`kubectl get secrets --all-namespaces` or `kubectl describe secret <name>` in shell history or audit log",
+        "curl call to /api/v1/secrets with Authorization: Bearer <token>",
+        "Atomic Red Team T1552.007 test: query to /api/v1/secrets endpoint"
+      ]
+    },
+    {
+      "id": null,
+      "name": "User Account Authentication",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Authentication events in the Kubernetes API server. Enumerating secrets requires valid credentials; anomalous authentication followed by secret access is a compound indicator.",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Service account authenticating from outside the cluster then listing secrets",
+        "User account with no prior secret-access history suddenly listing all secrets",
+        "Authentication using a token not associated with any running pod (orphaned token)"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0198",
+      "name": "Detect Abuse of Container APIs for Credential Access",
+      "summary": "AN0571 identifies suspicious kubectl get secrets or direct API calls exposing credential data via container APIs.",
+      "url": "https://attack.mitre.org/techniques/T1552/007/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Command Execution",
+        "User Account Authentication"
+      ]
+    },
+    {
+      "id": "DET0412",
+      "name": "Detect Access or Search for Unsecured Credentials Across Platforms",
+      "summary": "AN1158 flags unusual access to container image layers or mounted secrets. AN1157 detects unauthorized API calls to retrieve key material.",
+      "url": "https://attack.mitre.org/techniques/T1552/",
+      "data_component_refs": [
+        "Application Log Content",
+        "User Account Authentication"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/List%20K8S%20secrets/",
@@ -41,5 +102,18 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1078.003",
+      "name": "Local Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/003/",
+      "relationship": "upstream_precondition",
+      "rationale": "Listing Kubernetes secrets via the API (T1552.007) requires an authenticated identity with list/get permission on the secrets resource. The Sigma rule 'kubernetes_audit_secrets_enumeration' fires on verb=list, objectRef.resource=secrets; but the act of listing secrets is only possible with a valid Kubernetes identity (T1078.003 or T1078.004). Correlating the secret-list event with the authentication event that preceded it is required for full kill-chain attribution.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_secrets_enumeration.yml",
+        "https://attack.mitre.org/techniques/T1078/003/"
+      ]
+    }
+  ]
 }

@@ -3,8 +3,7 @@
   "title": "Cluster internal networking",
   "description": "Kubernetes networking behavior allows traffic between pods in the cluster as a default behavior. Attackers who gain access to a single container may use it for network reachability to another container in the cluster.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1210",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Cluster%20internal%20networking/",
     "description": "Kubernetes networking behavior allows traffic between pods in the cluster as a default behavior. Attackers who gain access to a single container may use it for network reachability to another container in the cluster."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Network Traffic Content",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Packet-level content of inter-pod traffic. Exploit payloads directed at vulnerable services running in other pods traverse the cluster network unencrypted by default.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Exploit payload detected in traffic between two pods in the same namespace",
+        "HTTP requests from pod A to pod B containing injection patterns or vulnerability probe strings",
+        "Service mesh (Istio/Envoy) access log showing unexpected cross-service calls with anomalous payloads"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Application logs from target services recording exploit attempts, connection anomalies, or errors caused by lateral movement traffic.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Web application log: 500 error from a request containing a deserialization exploit payload",
+        "Database service log: authentication failure from a pod IP not in the approved client list",
+        "Service crash or restart in kube-system correlated with unusual inbound network traffic"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Flow-level data showing inter-pod connection patterns. Unexpected pod-to-pod connections violating expected application topology are an indicator of lateral movement.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Pod establishing a connection to another pod's port that is not part of the defined service graph",
+        "Flow data showing a compromised pod connecting to multiple other pods sequentially (scanning then exploiting)",
+        "NetworkPolicy violation log: pod attempted connection to restricted destination"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0118",
+      "name": "Exploitation of Remote Services -- multi-platform lateral movement detection",
+      "summary": "AN0328 links inbound network access to services with subsequent daemon crashes or shell spawning, covering service exploitation within the cluster.",
+      "url": "https://attack.mitre.org/techniques/T1210/",
+      "data_component_refs": [
+        "Network Traffic Content",
+        "Application Log Content",
+        "Network Traffic Flow"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Cluster%20internal%20networking/",
@@ -40,5 +91,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1046",
+      "name": "Network Service Discovery",
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "relationship": "upstream_precondition",
+      "rationale": "Exploiting cluster-internal services (T1210) requires first discovering them via network mapping (T1046). MITRE T1210 page explicitly states T1046 as the precondition: 'adversaries use Network Service Discovery to identify vulnerable systems before exploitation.' In Kubernetes, the flat pod network makes internal service discovery (T1046 / T1613) the mandatory first step before lateral exploitation.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1210/"
+      ]
+    },
+    {
+      "technique_id": "T1021",
+      "name": "Remote Services",
+      "url": "https://attack.mitre.org/techniques/T1021/",
+      "relationship": "sibling_technique",
+      "rationale": "Lateral movement across the cluster internal network may use legitimate remote service protocols (SSH, HTTP APIs) rather than exploiting vulnerabilities. T1021 (Remote Services) covers this complementary path. Cluster-internal networking enables both unauthenticated exploitation (T1210) and authenticated service abuse (T1021); defenders monitoring lateral movement need coverage of both.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1021/"
+      ]
+    }
+  ]
 }

@@ -202,5 +202,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1195.002",
+      "name": "Compromise Software Supply Chain",
+      "url": "https://attack.mitre.org/techniques/T1195/002/",
+      "relationship": "supply_chain_relationship",
+      "rationale": "T1525 covers implanting a malicious image inside the victim's own registry (internal persistence). T1195.002 covers poisoning a software artifact before it reaches the victim -- the distinction is where in the supply chain the compromise occurs. When a base image is tampered with upstream (public registry, CI/CD pipeline) and the victim's cluster pulls it, T1195.002 is the correct technique; T1525 applies when an authenticated attacker modifies an image already inside the victim's private registry. Defenders should alert on both pull-from-poisoned-upstream (T1195.002) and push-to-internal-registry (T1525) as separate but related event chains.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1525/",
+        "https://attack.mitre.org/techniques/T1195/002/"
+      ]
+    },
+    {
+      "technique_id": "T1610",
+      "name": "Deploy Container",
+      "url": "https://attack.mitre.org/techniques/T1610/",
+      "relationship": "downstream_capability",
+      "rationale": "The implanted image is operationalized when a new container is deployed from it (T1610). Atomic Red Team T1610 test documents this exact chain: adversary builds a malicious image then launches it via docker create/start or kubectl apply. Detection of image implantation alone (T1525) is incomplete without chaining to the first deploy event that activates the payload.",
+      "sources": [
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1610/T1610.md"
+      ]
+    }
+  ]
 }

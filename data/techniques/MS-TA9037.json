@@ -3,8 +3,7 @@
   "title": "images from a private registry",
   "description": "The images that are running in the cluster can be stored in a private registry. For pulling those images, the container runtime engine (such as Docker or containerd) needs to have valid credentials to those registries. If the registry is hosted by the cloud provider, in services like Azure Container Registry (ACR) or Amazon Elastic Container Registry (ECR), cloud credentials are used to authenticate to the registry. If attackers get access to the cluster, in some cases they can obtain access to the private registry and pull its images. For example, attackers can use the managed identity token as described in the \u201cAccess managed identity credential\u201d technique. Similarly, in EKS, attackers can use the AmazonEC2ContainerRegistryReadOnly policy that is bound by default to the node\u2019s IAM role.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1530",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/images%20from%20a%20private%20registry/",
     "description": "The images that are running in the cluster can be stored in a private registry. For pulling those images, the container runtime engine (such as Docker or containerd) needs to have valid credentials to those registries. If the registry is hosted by the cloud provider, in services like Azure Container Registry (ACR) or Amazon Elastic Container Registry (ECR), cloud credentials are used to authenticate to the registry. If attackers get access to the cluster, in some cases they can obtain access to the private registry and pull its images. For example, attackers can use the managed identity token as described in the \u201cAccess managed identity credential\u201d technique. Similarly, in EKS, attackers can use the AmazonEC2ContainerRegistryReadOnly policy that is bound by default to the node\u2019s IAM role."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Cloud Storage Access",
+      "data_source_id": "DS0010",
+      "data_source_name": "Cloud Storage",
+      "definition": "Access events to cloud-hosted container registries (Azure Container Registry, Amazon ECR, Google Artifact Registry). An attacker using stolen credentials to pull private images generates cloud audit events.",
+      "url": "https://attack.mitre.org/datasources/DS0010/",
+      "relevant_events": [
+        "Azure Container Registry: pull operation from an IP not associated with a known node or CI/CD system",
+        "AWS ECR: GetAuthorizationToken or BatchGetImage called using node instance role from outside the cluster",
+        "GCP Artifact Registry: pull event using workload identity token from a pod not in the image-pull service account list"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes audit logs showing pod creation events with image pull secrets being accessed, or node-level container runtime logs showing registry authentication and image pull operations.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit: list/get operation on secrets of type kubernetes.io/dockerconfigjson",
+        "Container runtime log: image pull from private registry using a managed identity or node role credential",
+        "Kubernetes event: SuccessfulPull event for an image that is not in the approved image allowlist"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Image Metadata",
+      "data_source_id": "DS0007",
+      "data_source_name": "Image",
+      "definition": "Container image metadata including registry source, digest, and pull history. Unexpected image pulls from private registries by unauthorized principals indicate credential abuse.",
+      "url": "https://attack.mitre.org/datasources/DS0007/",
+      "relevant_events": [
+        "New container image pulled from a private registry not previously accessed by this cluster",
+        "Image pull using node managed identity rather than a per-pod image pull secret",
+        "Container image inventory audit revealing images from unexpected registry namespaces"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0484",
+      "name": "Multi-Platform Cloud Storage Exfiltration Behavior Chain",
+      "summary": "AN1328-AN1330 cover spike in access from new IAM roles and OAuth token abuse for data access. The container registry pull scenario maps to AN1328 (new IAM user/role accessing cloud storage).",
+      "url": "https://attack.mitre.org/techniques/T1530/",
+      "data_component_refs": [
+        "Cloud Storage Access",
+        "Application Log Content",
+        "Image Metadata"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/images%20from%20a%20private%20registry/",
@@ -40,5 +91,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1552.001",
+      "name": "Credentials In Files",
+      "url": "https://attack.mitre.org/techniques/T1552/001/",
+      "relationship": "upstream_precondition",
+      "rationale": "Accessing a private container registry (T1530) requires registry credentials. These credentials are stored in Kubernetes imagePullSecrets or in ~/.docker/config.json files. MITRE T1552.001 covers credential files; its detection text explicitly calls out 'Container processes accessing mounted secrets or configuration paths' and Hildegard malware searching for Docker credentials. The imagePullSecret / docker config credential read is the T1552.001 precondition that enables T1530 registry access.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/001/"
+      ]
+    },
+    {
+      "technique_id": "T1525",
+      "name": "Implant Internal Image",
+      "url": "https://attack.mitre.org/techniques/T1525/",
+      "relationship": "downstream_capability",
+      "rationale": "After gaining access to a private registry (T1530), an adversary can push a malicious image to it (T1525). MITRE T1525 describes implanting images in registries; the registry credential access (T1530 / T1552.001) is what makes the push possible. Detection of T1530 should trigger investigation for subsequent T1525 image push events.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1525/"
+      ]
+    }
+  ]
 }

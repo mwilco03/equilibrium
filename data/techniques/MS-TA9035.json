@@ -3,8 +3,7 @@
   "title": "CoreDNS poisoning",
   "description": "CoreDNS is a modular Domain Name System (DNS) server written in Go, hosted by Cloud Native Computing Foundation (CNCF). CoreDNS is the main DNS service that is being used in Kubernetes. The configuration of CoreDNS can be modified by a file named corefile. In Kubernetes, this file is stored in a ConfigMap object, located at the kube-system namespace. If attackers have permissions to modify the ConfigMap, for example by using the container\u2019s service account, they can change the behavior of the cluster\u2019s DNS, poison it, and take the network identity of other services.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1557",
@@ -26,8 +25,72 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/CoreDNS%20poisoning/",
     "description": "CoreDNS is a modular Domain Name System (DNS) server written in Go, hosted by Cloud Native Computing Foundation (CNCF). CoreDNS is the main DNS service that is being used in Kubernetes. The configuration of CoreDNS can be modified by a file named corefile. In Kubernetes, this file is stored in a ConfigMap object, located at the kube-system namespace. If attackers have permissions to modify the ConfigMap, for example by using the container\u2019s service account, they can change the behavior of the cluster\u2019s DNS, poison it, and take the network identity of other services."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs recording modifications to the CoreDNS ConfigMap in the kube-system namespace. This is the primary indicator of CoreDNS poisoning.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit: verb=update/patch, objectRef.resource=configmaps, objectRef.name=coredns, objectRef.namespace=kube-system",
+        "Change to the Corefile content in the coredns ConfigMap not matching a change management record",
+        "CoreDNS pod restart following a ConfigMap modification (indicating the new config was applied)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Content",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "DNS query and response traffic showing poisoned resolution. Requests for legitimate service names returning unexpected IPs indicate active CoreDNS poisoning.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "DNS response for a known internal service returning an unexpected IP (not a cluster service IP)",
+        "DNS traffic showing unexpected rewrites or rewrite rules added to Corefile directing traffic to attacker infrastructure",
+        "Cluster DNS query patterns showing increased NXDOMAIN or redirect responses"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Windows Registry Key Modification",
+      "data_source_id": "DS0024",
+      "data_source_name": "Windows Registry",
+      "definition": "Note: STIX T1557 includes Windows Registry modification as a data source (covering AiTM via registry-based DNS config changes on Windows nodes). In K8s context this is replaced by ConfigMap modification in the API server audit.",
+      "url": "https://attack.mitre.org/datasources/DS0024/",
+      "relevant_events": [
+        "NOT applicable in pure-Linux K8s clusters; included for completeness per STIX T1557 data sources",
+        "On Windows worker nodes: DNS client configuration registry changes in HKLM\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Service Creation",
+      "data_source_id": "DS0019",
+      "data_source_name": "Service",
+      "definition": "Creation of new Kubernetes Services or ExternalName services that redirect cluster DNS resolution to attacker-controlled endpoints.",
+      "url": "https://attack.mitre.org/datasources/DS0019/",
+      "relevant_events": [
+        "New ExternalName service created pointing a legitimate service name to an external attacker IP",
+        "Kubernetes Service creation that shadows an existing service name in a different namespace",
+        "API audit: service creation by a non-privileged user in kube-system namespace"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0296",
+      "name": "Detect Adversary-in-the-Middle via Network and Configuration Anomalies",
+      "summary": "AN0823 identifies suspicious DNS poisoning attempts and unauthorized configuration modifications. AN0824 monitors unauthorized config file edits correlated with unexpected network sessions.",
+      "url": "https://attack.mitre.org/techniques/T1557/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Network Traffic Content",
+        "Service Creation"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/CoreDNS%20poisoning/",
@@ -41,5 +104,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1040",
+      "name": "Network Sniffing",
+      "url": "https://attack.mitre.org/techniques/T1040/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE T1040 page states: 'Adversaries may likely also utilize network sniffing during Adversary-in-the-Middle (AitM) to passively gain additional knowledge about the environment.' CoreDNS poisoning (T1557) intercepts DNS queries; the attacker can then sniff the traffic redirected through their host (T1040) to capture plaintext credentials or session tokens from mis-redirected pod communications.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1040/"
+      ]
+    },
+    {
+      "technique_id": "T1565.002",
+      "name": "Transmitted Data Manipulation",
+      "url": "https://attack.mitre.org/techniques/T1565/002/",
+      "relationship": "downstream_capability",
+      "rationale": "CoreDNS poisoning redirects DNS resolution to attacker-controlled services, enabling manipulation of transmitted data -- not just passive interception. T1565.002 (Transmitted Data Manipulation) covers modifying data in transit. After poisoning DNS, an adversary can serve malicious content or manipulate API responses, which maps to T1565.002 as the integrity-impact phase of the attack.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1565/002/"
+      ]
+    }
+  ]
 }

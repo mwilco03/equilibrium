@@ -3,8 +3,7 @@
   "title": "Connect from Proxy server",
   "description": "Attackers may use proxy servers to hide their origin IP. Specifically, attackers often use anonymous networks such as TOR for their activity. This can be used for communicating with the applications themselves or with the API server.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1090",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Connect%20from%20Proxy%20server/",
     "description": "Attackers may use proxy servers to hide their origin IP. Specifically, attackers often use anonymous networks such as TOR for their activity. This can be used for communicating with the applications themselves or with the API server."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Summarized or raw network flow data showing source IP, destination IP, port, and protocol. API server requests originating from known proxy/VPN/TOR exit nodes are a primary indicator.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Kubernetes API server receiving requests from a TOR exit node IP or known proxy ASN",
+        "kubectl command authenticated from a source IP not in the cluster's authorized IP range",
+        "Repeated API authentication attempts from multiple geographically dispersed source IPs (proxy chain rotation)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Content",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Deep packet inspection or TLS-decrypted content of traffic to/from the Kubernetes API server or other cluster endpoints. May reveal proxy protocol headers (X-Forwarded-For) inserted by attacker infrastructure.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "X-Forwarded-For or Via headers in requests to the API server suggesting proxied origin",
+        "Unexpected User-Agent strings in kubectl-style API calls indicating non-standard tooling",
+        "TLS certificate anomalies in connections to internal cluster services routed through a proxy"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Connection Creation",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "New outbound or inbound network connections. Attackers may establish reverse proxy or tunnel connections from a compromised pod to external infrastructure.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Container establishing outbound connection to a non-cluster IP on an unusual port (e.g., 8080, 3128, 1080)",
+        "socat or ncat process inside a pod creating a listener or forwarding connection",
+        "kubectl port-forward invoked to tunnel external attacker traffic through the API server"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0445",
+      "name": "Detection of Proxy Infrastructure Setup and Traffic Bridging",
+      "summary": "AN1229-AN1233 cover process-level proxy tooling and network connection creation. AN1232 focuses on nc/socat reverse tunnel scripts in containers.",
+      "url": "https://attack.mitre.org/techniques/T1090/",
+      "data_component_refs": [
+        "Network Traffic Flow",
+        "Network Traffic Content",
+        "Network Connection Creation"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Connect%20from%20Proxy%20server/",
@@ -40,5 +91,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1090.003",
+      "name": "Multi-hop Proxy",
+      "url": "https://attack.mitre.org/techniques/T1090/003/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "Connecting to the Kubernetes API server or kubelet from a Tor exit node or multi-layer proxy -- as described in the Microsoft K8s Threat Matrix -- maps to T1090.003 (Multi-hop Proxy). T1090 (parent) is the current primary; T1090.003 is more specific for the anonymization use case where the adversary chains multiple proxies to obscure their origin IP from API server audit logs.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1090/003/"
+      ]
+    },
+    {
+      "technique_id": "T1090.002",
+      "name": "External Proxy",
+      "url": "https://attack.mitre.org/techniques/T1090/002/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "When the adversary uses a single external proxy (VPS, cloud instance) as a relay to access the Kubernetes API, T1090.002 (External Proxy) is the more specific sub-technique. This is the simpler variant where a compromised cloud host or rented VPS is used as a single hop to obscure the attacker's real IP from K8s API audit logs.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1090/002/"
+      ]
+    }
+  ]
 }

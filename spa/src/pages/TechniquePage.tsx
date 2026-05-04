@@ -1,9 +1,20 @@
 import { Link, useParams } from "react-router-dom";
-import { ExternalLink, ArrowLeft } from "lucide-react";
+import { ExternalLink, ArrowLeft, GitBranch } from "lucide-react";
 import { getTechnique, getTechniquesByMitreId } from "@/lib/data";
 import { DataComponentBadge } from "@/components/DataComponentBadge";
 import { VendorDetectionBlock } from "@/components/VendorDetectionBlock";
-import type { TechniqueRecord } from "@/types/equilibrium";
+import type { CrossReferenceRelationship, TechniqueRecord } from "@/types/equilibrium";
+
+const RELATIONSHIP_LABELS: Record<CrossReferenceRelationship, string> = {
+  more_specific_subtechnique: "More-specific sub-technique",
+  parent_technique: "Parent technique",
+  downstream_capability: "Downstream capability",
+  upstream_precondition: "Upstream precondition",
+  tagged_by_community_rules: "Tagged by community rules as",
+  supply_chain_relationship: "Supply-chain relationship",
+  sibling_technique: "Sibling technique",
+  post_execution_linux_overlay: "Post-execution Linux technique",
+};
 
 const REPO_DATA_PATH = "https://github.com/mwilco03/equilibrium/blob/main/data/techniques";
 
@@ -111,6 +122,10 @@ export function TechniquePage() {
         )}
       </section>
 
+      {t.mitre_cross_references && t.mitre_cross_references.length > 0 ? (
+        <CrossReferencesSection refs={t.mitre_cross_references} />
+      ) : null}
+
       {t.detection_strategies && t.detection_strategies.length > 0 ? (
         <section>
           <h2 className="mb-3 text-lg font-semibold">Detection strategies</h2>
@@ -172,6 +187,116 @@ export function TechniquePage() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+function CrossReferenceItem({
+  cr,
+}: {
+  cr: TechniqueRecord["mitre_cross_references"] extends (infer T)[] | undefined
+    ? T
+    : never;
+}) {
+  return (
+    <li className="rounded border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs uppercase tracking-wide text-zinc-300">
+          {RELATIONSHIP_LABELS[cr.relationship]}
+        </span>
+        {cr.url ? (
+          <a
+            href={cr.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 font-mono text-cyan-400 hover:underline"
+          >
+            {cr.technique_id}
+            <ExternalLink className="h-3 w-3" aria-hidden />
+          </a>
+        ) : (
+          <span className="font-mono text-zinc-300">{cr.technique_id}</span>
+        )}
+        {cr.name ? <span className="text-zinc-200">{cr.name}</span> : null}
+      </div>
+      <div className="mt-1 text-sm text-zinc-300">{cr.rationale}</div>
+      {cr.sources && cr.sources.length > 0 ? (
+        <ul className="mt-2 flex flex-col gap-1 text-xs">
+          {cr.sources.map((s) => (
+            <li key={s}>
+              <a
+                href={s}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all text-zinc-400 hover:text-cyan-400"
+              >
+                {s}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
+function CrossReferencesSection({
+  refs,
+}: {
+  refs: NonNullable<TechniqueRecord["mitre_cross_references"]>;
+}) {
+  const structural = refs.filter(
+    (r) => r.relationship !== "post_execution_linux_overlay",
+  );
+  const overlay = refs.filter(
+    (r) => r.relationship === "post_execution_linux_overlay",
+  );
+
+  return (
+    <>
+      {structural.length > 0 ? (
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+            <GitBranch className="h-4 w-4 text-cyan-400" aria-hidden />
+            MITRE cross-references
+          </h2>
+          <p className="mb-3 text-sm text-zinc-400">
+            Secondary MITRE technique mappings worth knowing. Defenders aggregating detections across rule sets, or following the more-specific sub-technique chain, should treat these as also covering the technique above.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {structural.map((cr) => (
+              <CrossReferenceItem key={cr.technique_id} cr={cr} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {overlay.length > 0 ? (
+        <section>
+          <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
+            <GitBranch className="h-4 w-4 text-amber-400" aria-hidden />
+            Post-execution Linux overlay
+            <span className="rounded bg-amber-900/40 px-2 py-0.5 text-xs font-normal text-amber-200">
+              {overlay.length}
+            </span>
+          </h2>
+          <p className="mb-3 text-sm text-zinc-400">
+            MITRE Linux techniques that an adversary would exercise after gaining
+            in-container execution via this entry point. Collapsed by default
+            because the list is large.
+          </p>
+          <details className="rounded border border-zinc-800 bg-zinc-900/40">
+            <summary className="cursor-pointer p-3 text-sm text-zinc-300 hover:bg-zinc-900/60">
+              Show {overlay.length} Linux overlay technique{overlay.length === 1 ? "" : "s"}
+            </summary>
+            <ul className="flex flex-col gap-2 border-t border-zinc-800 p-3">
+              {overlay.map((cr) => (
+                <CrossReferenceItem key={cr.technique_id} cr={cr} />
+              ))}
+            </ul>
+          </details>
+        </section>
+      ) : null}
+    </>
   );
 }
 

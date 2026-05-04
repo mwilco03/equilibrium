@@ -191,5 +191,398 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1611",
+      "name": "Escape to Host",
+      "url": "https://attack.mitre.org/techniques/T1611/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE's T1610 description explicitly states: 'In Kubernetes environments, an adversary may attempt to deploy a privileged or vulnerable container into a specific node in order to Escape to Host (T1611) and access other containers running on the node.' The Atomic Red Team T1610 test also documents this chain.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1610/",
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1610/T1610.md"
+      ]
+    },
+    {
+      "technique_id": "T1525",
+      "name": "Implant Internal Image",
+      "url": "https://attack.mitre.org/techniques/T1525/",
+      "relationship": "upstream_precondition",
+      "rationale": "A container deployed from a malicious or implanted image (T1525) is the upstream step that loads the payload. The Atomic Red Team T1610 test explicitly chains image build to container launch: 'docker build ... && docker run ...'. Detection of T1610 deploy events is incomplete without also tracking the registry push event that T1525 captures.",
+      "sources": [
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1610/T1610.md"
+      ]
+    },
+    {
+      "technique_id": "T1548.003",
+      "name": "Abuse Elevation Control Mechanism: Sudo and Sudo Caching",
+      "url": "https://attack.mitre.org/techniques/T1548/003/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After gaining a shell inside a container via kubectl exec (T1609), an adversary may write NOPASSWD: ALL to /etc/sudoers or a /etc/sudoers.d/ file to escalate from a non-root container user to root within the container. Observable: write to /etc/sudoers or exec of visudo inside the container PID namespace.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1548/003/"
+      ]
+    },
+    {
+      "technique_id": "T1548.001",
+      "name": "Abuse Elevation Control Mechanism: Setuid and Setgid",
+      "url": "https://attack.mitre.org/techniques/T1548/001/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary can run chmod u+s on a binary to create a setuid persistence mechanism for future privilege escalation within the container. Applicable unless allowPrivilegeEscalation: false is set in the pod security context.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1548/001/"
+      ]
+    },
+    {
+      "technique_id": "T1098.004",
+      "name": "Account Manipulation: SSH Authorized Keys",
+      "url": "https://attack.mitre.org/techniques/T1098/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "From a shell obtained via kubectl exec into a container running sshd or a container with SSH access, an adversary appends their public key to ~/.ssh/authorized_keys to maintain persistent SSH access without valid credentials. Observable: write event to /root/.ssh/authorized_keys inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1098/004/"
+      ]
+    },
+    {
+      "technique_id": "T1136.001",
+      "name": "Create Account: Local Account",
+      "url": "https://attack.mitre.org/techniques/T1136/001/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "From a root shell in the container, an adversary runs useradd to create a backdoor account. MITRE explicitly lists Containers as a platform for this sub-technique. Observable: exec of /usr/sbin/useradd or write to /etc/passwd and /etc/shadow inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1136/001/"
+      ]
+    },
+    {
+      "technique_id": "T1546.004",
+      "name": "Event Triggered Execution: Unix Shell Configuration Modification",
+      "url": "https://attack.mitre.org/techniques/T1546/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary modifies ~/.bashrc or /etc/profile to inject a payload that re-executes every time a shell session opens inside the container, including future kubectl exec sessions by operators. Observable: write to ~/.bashrc or /etc/profile inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1546/004/"
+      ]
+    },
+    {
+      "technique_id": "T1053.003",
+      "name": "Scheduled Task/Job: Cron",
+      "url": "https://attack.mitre.org/techniques/T1053/003/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "In containers that include crond (common in many base images), an adversary installs a crontab entry to re-execute a payload periodically after the initial kubectl exec session ends. Kinsing malware is documented using cron to download and re-run scripts every minute in container environments. Observable: write to /var/spool/cron/crontabs/ or exec of crontab -e inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1053/003/"
+      ]
+    },
+    {
+      "technique_id": "T1505.003",
+      "name": "Server Software Component: Web Shell",
+      "url": "https://attack.mitre.org/techniques/T1505/003/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container running a web server, an adversary drops a web shell into the web root directory, creating a persistent command execution channel via the already-exposed service port. Observable: write of a .php, .jsp, or .py file to a web-served directory inside the container, followed by an HTTP request to that path.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1505/003/"
+      ]
+    },
+    {
+      "technique_id": "T1574.006",
+      "name": "Hijack Execution Flow: Dynamic Linker Hijacking",
+      "url": "https://attack.mitre.org/techniques/T1574/006/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary writes a malicious shared library and adds its path to /etc/ld.so.preload or sets LD_PRELOAD in the container environment to intercept application library calls. Hildegard malware, which specifically targets Kubernetes, is documented modifying /etc/ld.so.preload in container environments. Observable: write to /etc/ld.so.preload inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1574/006/"
+      ]
+    },
+    {
+      "technique_id": "T1055.008",
+      "name": "Process Injection: Ptrace System Calls",
+      "url": "https://attack.mitre.org/techniques/T1055/008/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container running as root or with CAP_SYS_PTRACE, an adversary uses ptrace to attach to the application process and extract credentials from memory or inject shellcode. Observable: ptrace syscall with PTRACE_ATTACH against a non-child process inside the container PID namespace.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1055/008/"
+      ]
+    },
+    {
+      "technique_id": "T1003.007",
+      "name": "OS Credential Dumping: Proc Filesystem",
+      "url": "https://attack.mitre.org/techniques/T1003/007/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container as root, an adversary reads /proc/<pid>/maps and /proc/<pid>/mem to extract credentials from the application process memory (e.g., database passwords held in heap). LaZagne and MimiPenguin implement this technique. Observable: open/read syscall on /proc/<pid>/mem for a PID not owned by the calling process.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1003/007/"
+      ]
+    },
+    {
+      "technique_id": "T1003.008",
+      "name": "OS Credential Dumping: /etc/passwd and /etc/shadow",
+      "url": "https://attack.mitre.org/techniques/T1003/008/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container as root, an adversary reads /etc/shadow to dump password hashes for all local accounts for offline cracking. Observable: read of /etc/shadow by a process other than PAM or login utilities inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1003/008/"
+      ]
+    },
+    {
+      "technique_id": "T1552.001",
+      "name": "Unsecured Credentials: Credentials In Files",
+      "url": "https://attack.mitre.org/techniques/T1552/001/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary searches for credentials in environment variables, config files, and mounted secrets including the Kubernetes service account token at /var/run/secrets/kubernetes.io/serviceaccount/token. MITRE explicitly lists Containers as a platform; Hildegard and TeamTNT are documented searching for these paths. Observable: read of /var/run/secrets/kubernetes.io/serviceaccount/token or /run/secrets/* inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/001/"
+      ]
+    },
+    {
+      "technique_id": "T1552.003",
+      "name": "Unsecured Credentials: Shell History",
+      "url": "https://attack.mitre.org/techniques/T1552/003/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container that has been used interactively by operators, ~/.bash_history may contain plaintext credentials previously typed. Kinsing malware is documented searching bash_history files for credentials. Observable: read of ~/.bash_history by a process that is not the user's own shell.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/003/"
+      ]
+    },
+    {
+      "technique_id": "T1552.004",
+      "name": "Unsecured Credentials: Private Keys",
+      "url": "https://attack.mitre.org/techniques/T1552/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container used in CI/CD or mounting secret volumes, an adversary searches for SSH private keys and TLS certificates. Observable: find/read syscall on files matching *.pem, *.key, id_rsa patterns inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/004/"
+      ]
+    },
+    {
+      "technique_id": "T1070.003",
+      "name": "Indicator Removal: Clear Command History",
+      "url": "https://attack.mitre.org/techniques/T1070/003/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After completing activity via kubectl exec, an adversary runs history -c or unset HISTFILE to erase evidence of their commands from the container. TeamTNT and Hildegard, both container-targeting malware families, are documented using this technique. Observable: exec of history -c inside a container terminal session.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1070/003/"
+      ]
+    },
+    {
+      "technique_id": "T1070.004",
+      "name": "Indicator Removal: File Deletion",
+      "url": "https://attack.mitre.org/techniques/T1070/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After dropping and executing a tool inside the container, an adversary runs rm -f on the tool binary to remove forensic artifacts. Observable: exec of rm targeting a recently-written executable inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1070/004/"
+      ]
+    },
+    {
+      "technique_id": "T1082",
+      "name": "System Information Discovery",
+      "url": "https://attack.mitre.org/techniques/T1082/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary runs uname -a, cat /proc/version, and cat /etc/os-release to identify the kernel version and container OS to inform exploit selection. Observable: exec of uname, id, hostname, or cat /proc/version inside the container in rapid succession after initial access.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1082/"
+      ]
+    },
+    {
+      "technique_id": "T1087.001",
+      "name": "Account Discovery: Local Account",
+      "url": "https://attack.mitre.org/techniques/T1087/001/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary reads /etc/passwd to enumerate user accounts and identify service accounts with home directories or elevated privileges. Observable: read of /etc/passwd by a process other than PAM inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1087/001/"
+      ]
+    },
+    {
+      "technique_id": "T1069.001",
+      "name": "Permission Groups Discovery: Local Groups",
+      "url": "https://attack.mitre.org/techniques/T1069/001/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary runs groups or reads /etc/group to identify membership in privileged groups such as sudo, docker, or adm. Observable: exec of groups or id inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1069/001/"
+      ]
+    },
+    {
+      "technique_id": "T1057",
+      "name": "Process Discovery",
+      "url": "https://attack.mitre.org/techniques/T1057/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary runs ps aux or reads /proc/*/cmdline to enumerate running processes, identify applications holding credentials in memory, and (if hostPID=true) discover all host processes. Observable: exec of ps or pgrep inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1057/"
+      ]
+    },
+    {
+      "technique_id": "T1083",
+      "name": "File and Directory Discovery",
+      "url": "https://attack.mitre.org/techniques/T1083/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary uses find / or ls -la to enumerate the filesystem for configuration files, secrets, and mounted volumes. Observable: exec of find / or recursive directory traversal targeting /var/run/secrets/, /etc/, or mounted volume paths.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1083/"
+      ]
+    },
+    {
+      "technique_id": "T1046",
+      "name": "Network Service Discovery",
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary uses nmap or nc -z to scan the pod network for reachable services including the Kubernetes API server at kubernetes.default.svc, etcd, and adjacent pod services. MITRE explicitly lists Containers as a platform. Observable: exec of nmap or nc -z inside the container; DNS query for kubernetes.default.svc.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1046/"
+      ]
+    },
+    {
+      "technique_id": "T1016",
+      "name": "System Network Configuration Discovery",
+      "url": "https://attack.mitre.org/techniques/T1016/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary reads ip addr, ip route, and /etc/resolv.conf to learn the pod CIDR, gateway, and DNS server (kube-dns) to inform lateral movement. Observable: exec of ip addr or cat /etc/resolv.conf inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1016/"
+      ]
+    },
+    {
+      "technique_id": "T1105",
+      "name": "Ingress Tool Transfer",
+      "url": "https://attack.mitre.org/techniques/T1105/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary uses curl or wget to download exploit binaries, cryptominers, or lateral movement tools from an external C2. Hildegard and Doki malware are documented using tool download into containers. Observable: outbound HTTP/HTTPS from the container to an external IP not in the application's documented egress list.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1105/"
+      ]
+    },
+    {
+      "technique_id": "T1059.006",
+      "name": "Command and Scripting Interpreter: Python",
+      "url": "https://attack.mitre.org/techniques/T1059/006/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container that includes Python (common in data and ML workloads), an adversary executes python3 one-liners for reverse shells, enumeration, or payload delivery. Observable: exec of python3 -c with socket/subprocess imports inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1059/006/"
+      ]
+    },
+    {
+      "technique_id": "T1496.001",
+      "name": "Resource Hijacking: Compute Hijacking",
+      "url": "https://attack.mitre.org/techniques/T1496/001/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary drops and runs a cryptominer (e.g., xmrig) to abuse the pod's CPU allocation. MITRE explicitly lists Containers as a platform; TeamTNT, Hildegard, and Kinsing are documented executing cryptominers inside containers via this exact path. Observable: exec of xmrig or similar binary inside the container; sustained high CPU from a non-application process.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1496/001/"
+      ]
+    },
+    {
+      "technique_id": "T1485",
+      "name": "Data Destruction",
+      "url": "https://attack.mitre.org/techniques/T1485/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container with mounted persistent volumes, an adversary runs rm -rf targeting volume mount paths to destroy application data. MITRE explicitly lists Containers as a platform; the technique page's detection strategy specifically mentions rm -rf /mnt/volumes/ inside containers. Observable: exec of rm -rf targeting a mounted volume path inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1485/"
+      ]
+    },
+    {
+      "technique_id": "T1222.002",
+      "name": "File and Directory Permissions Modification: Linux and Mac File Permissions",
+      "url": "https://attack.mitre.org/techniques/T1222/002/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary uses chmod or chown to make a dropped payload executable or to restrict operator access to their persistence files. Kinsing, which targets containers, is documented using chmod on key files. Observable: exec of chmod +x or chown on a recently-written file inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1222/002/"
+      ]
+    },
+    {
+      "technique_id": "T1036.005",
+      "name": "Masquerading: Match Legitimate Resource Name or Location",
+      "url": "https://attack.mitre.org/techniques/T1036/005/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container, an adversary places their tool binary in /tmp/ or /dev/shm/ with a name matching a legitimate system utility (e.g., kube-apiserver, sshd) to evade process-name-based detection. MITRE explicitly lists Containers as a platform and the technique page includes container-specific language. Observable: exec of a binary in /tmp/ or /dev/shm/ whose name matches a known system tool.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1036/005/"
+      ]
+    },
+    {
+      "technique_id": "T1021.004",
+      "name": "Remote Services: SSH",
+      "url": "https://attack.mitre.org/techniques/T1021/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container and obtaining SSH keys or credentials, an adversary uses the container as a pivot point to SSH to other pods or cluster nodes. Kinsing malware is documented using SSH for lateral movement from container environments. Observable: outbound TCP to port 22 from inside the container to a pod or node IP.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1021/004/"
+      ]
+    },
+    {
+      "technique_id": "T1068",
+      "name": "Exploitation for Privilege Escalation",
+      "url": "https://attack.mitre.org/techniques/T1068/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container as a non-root user, an adversary executes a local privilege escalation exploit (e.g., CVE-2022-0847 DirtyPipe, CVE-2021-4034 pkexec) to become root within the container or to break out to the host. MITRE lists Containers as a platform and analytic AN1422 explicitly covers container breakout via exploitation. Observable: exec of a known exploit binary or anomalous write to /proc/self/mem inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1068/"
+      ]
+    },
+    {
+      "technique_id": "T1554",
+      "name": "Compromise Host Software Binary",
+      "url": "https://attack.mitre.org/techniques/T1554/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "After exec into a container as root, an adversary replaces a common binary (/usr/bin/ssh, /bin/ls) with a trojanized version that backdoors authentication or hides files within the container's writable filesystem layer. Observable: write to /usr/bin/, /usr/sbin/, or /bin/ inside the container for a file already present; file checksum mismatch vs. original image layer.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1554/"
+      ]
+    },
+    {
+      "technique_id": "T1027.004",
+      "name": "Obfuscated Files or Information: Compile After Delivery",
+      "url": "https://attack.mitre.org/techniques/T1027/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "In containers that include a build toolchain (gcc, go, make), an adversary transfers source code and compiles it inside the container to avoid dropping a binary that would match known malware hashes. Observable: exec of gcc, go build, or make in /tmp/ inside a container at an unexpected time; resulting binary exec immediately after compilation.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1027/004/"
+      ]
+    },
+    {
+      "technique_id": "T1543.002",
+      "name": "Create or Modify System Process: Systemd Service",
+      "url": "https://attack.mitre.org/techniques/T1543/002/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "In a container the adversary deployed, if the image includes systemd as the init system, the adversary can write a systemd service unit file to /etc/systemd/system/ to establish a persistent service that survives container restart. Hildegard malware is documented creating systemd services in container environments. Observable: write to /etc/systemd/system/*.service inside the container; exec of systemctl enable.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1543/002/"
+      ]
+    },
+    {
+      "technique_id": "T1037.004",
+      "name": "Boot or Logon Initialization Scripts: RC Scripts",
+      "url": "https://attack.mitre.org/techniques/T1037/004/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "In a container the adversary deployed, writing to /etc/rc.local causes the payload to execute every time the container restarts. Observable: write to /etc/rc.local inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1037/004/"
+      ]
+    },
+    {
+      "technique_id": "T1547.006",
+      "name": "Boot or Logon Autostart Execution: Kernel Modules and Extensions",
+      "url": "https://attack.mitre.org/techniques/T1547/006/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "If the adversary deployed a privileged container (as is common in MS-TA9008 / MS-TA9018), they can load a malicious kernel module (insmod) that persists in the host kernel across container restarts. Skidmap malware is documented using kernel modules in container-targeting campaigns. Requires CAP_SYS_MODULE or privileged=true. Observable: exec of insmod inside a privileged container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1547/006/"
+      ]
+    },
+    {
+      "technique_id": "T1014",
+      "name": "Rootkit",
+      "url": "https://attack.mitre.org/techniques/T1014/",
+      "relationship": "post_execution_linux_overlay",
+      "rationale": "In a privileged container deployed by the adversary, loading a kernel-mode rootkit (e.g., Diamorphine) hides the adversary's processes, files, and network connections from the host. TeamTNT is documented deploying Diamorphine in container environments. Requires privileged=true or CAP_SYS_MODULE. Observable: insmod of a .ko file inside a privileged container; missing processes in ps output after module load.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1014/"
+      ]
+    }
+  ]
 }

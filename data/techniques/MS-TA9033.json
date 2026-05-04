@@ -3,8 +3,7 @@
   "title": "Instance Metadata API",
   "description": "Cloud providers provide instance metadata service for retrieving information about the virtual machine, such as network configuration, disks, and SSH public keys. This service is accessible to the VMs via a non-routable IP address that can be accessed from within the VM only. Attackers who gain access to a container, may query the metadata API service for getting information about the underlying node. For example, in Azure, the following request would retrieve all the metadata information of an instance: http:///metadata/instance?api-version=2019-06-01",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1552.005",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Instance%20Metadata%20API/",
     "description": "Cloud providers provide instance metadata service for retrieving information about the virtual machine, such as network configuration, disks, and SSH public keys. This service is accessible to the VMs via a non-routable IP address that can be accessed from within the VM only. Attackers who gain access to a container, may query the metadata API service for getting information about the underlying node. For example, in Azure, the following request would retrieve all the metadata information of an instance: http:///metadata/instance?api-version=2019-06-01"
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "User Account Authentication",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Authentication events from tokens obtained via IMDS, used to access cloud resources. In the Discovery context, IMDS queries are used to enumerate node metadata even without follow-on credential use.",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Cloud API call authenticated with an IMDS-derived token from an unexpected pod source IP",
+        "Azure IMDS: request to /metadata/instance returning node network, disk, and identity metadata",
+        "AWS IMDS: request to /latest/meta-data/ returning instance type, region, and IAM role information"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Network connections to the IMDS IP (169.254.169.254) from container workloads. Any pod communicating with this endpoint is a candidate for investigation.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "HTTP GET to 169.254.169.254 from a container not in the approved IMDS-consumer list",
+        "Network policy audit: egress to 169.254.169.254/32 blocked and logged for a suspicious pod",
+        "Volume of IMDS queries from a single pod exceeding normal application patterns"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Content",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "HTTP request and response content for IMDS API calls. The response reveals what metadata was accessed (identities, network config, credentials).",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "IMDS response containing managed identity token captured in an HTTP proxy log",
+        "Full path enumeration of IMDS endpoints (e.g., /metadata/instance/network, /metadata/identity/) indicating discovery behavior",
+        "SSRF exploitation using a pod-hosted web app to relay IMDS requests"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0001",
+      "name": "Detect Access to Cloud Instance Metadata API (IaaS)",
+      "summary": "AN0001 identifies attempts to reach cloud metadata endpoints like 169.254.169.254 from VMs or containerized environments.",
+      "url": "https://attack.mitre.org/techniques/T1552/005/",
+      "data_component_refs": [
+        "Network Traffic Flow",
+        "Network Traffic Content",
+        "User Account Authentication"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Instance%20Metadata%20API/",
@@ -41,5 +92,19 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1078.004",
+      "name": "Cloud Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/004/",
+      "relationship": "downstream_capability",
+      "rationale": "Identical chain to MS-TA9028: querying the Instance Metadata API at 169.254.169.254 (T1552.005) yields credentials used to authenticate as a cloud IAM identity (T1078.004). The Falco incubating rule 'Contact EC2 Instance Metadata Service From Container' tags T1552.005 and fires on the outbound connection that precedes the cloud-credential-use step.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/005/",
+        "https://attack.mitre.org/techniques/T1078/004/",
+        "https://github.com/falcosecurity/rules/blob/main/rules/falco-incubating_rules.yaml"
+      ]
+    }
+  ]
 }

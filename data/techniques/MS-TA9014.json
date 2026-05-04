@@ -3,8 +3,7 @@
   "title": "Kubernetes CronJob",
   "description": "Kubernetes Job is a controller that creates one or more pods and ensures that a specified number of them successfully terminate. Kubernetes Job can be used to run containers that perform finite tasks for batch jobs. Kubernetes CronJob is used to schedule Jobs. Attackers may use Kubernetes CronJob for scheduling execution of malicious code that would run as a container in the cluster.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1053.007",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Kubernetes%20CronJob/",
     "description": "Kubernetes Job is a controller that creates one or more pods and ensures that a specified number of them successfully terminate. Kubernetes Job can be used to run containers that perform finite tasks for batch jobs. Kubernetes CronJob is used to schedule Jobs. Attackers may use Kubernetes CronJob for scheduling execution of malicious code that would run as a container in the cluster."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Scheduled Job Creation",
+      "data_source_id": "DS0003",
+      "data_source_name": "Scheduled Job",
+      "definition": "Creation of Kubernetes CronJob or Job resources in the cluster API, recording the schedule expression, pod template spec, and requesting principal - the definitive signal for T1053.007.",
+      "url": "https://attack.mitre.org/datasources/DS0003/",
+      "relevant_events": [
+        "Kubernetes audit event: verb=create, apiGroup=batch, objectRef.resource=cronjobs - record schedule, image, and requesting user",
+        "Kubernetes audit event: verb=create, apiGroup=batch, objectRef.resource=jobs (direct job creation without CronJob parent)",
+        "Kubernetes CronJob spec fields indicating abuse: schedule='*/1 * * * *' (every minute), restartPolicy=OnFailure, image outside approved registry"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Scheduled Job Modification",
+      "data_source_id": "DS0003",
+      "data_source_name": "Scheduled Job",
+      "definition": "Modification of existing CronJob schedules or pod templates to inject malicious containers or change execution frequency, indicating an attacker hijacking an existing legitimate CronJob for persistence.",
+      "url": "https://attack.mitre.org/datasources/DS0003/",
+      "relevant_events": [
+        "Kubernetes audit event: verb in [update, patch], apiGroup=batch, objectRef.resource=cronjobs - diff of spec.schedule or spec.jobTemplate.spec.template.spec.containers",
+        "Kubernetes audit event: verb=delete, apiGroup=batch, objectRef.resource=cronjobs (deletion could be cleanup after malicious execution)",
+        "Change to CronJob's serviceAccountName field to use a higher-privileged service account"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs providing full context for CronJob/Job lifecycle events, including the requesting principal, source IP, and full resource spec for forensic analysis.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit log: full request body for verb=create on batch/cronjobs containing malicious image and privileged pod spec",
+        "Kubernetes event: SuccessfulCreate for Job triggered by CronJob, showing which node the workload ran on",
+        "Kubernetes audit log: GET or LIST on cronjobs by a service account that should not be enumerating scheduled jobs"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0206",
+      "name": "Detection of Malicious Kubernetes CronJob Scheduling",
+      "summary": "AN0582 specifically detects abuse of container orchestration platforms where adversaries create CronJobs to maintain persistence or execute malicious Jobs across the cluster. Confirmed STIX object targeting T1053.007.",
+      "url": "https://attack.mitre.org/techniques/T1053/007/",
+      "data_component_refs": [
+        "Scheduled Job Creation",
+        "Scheduled Job Modification",
+        "Application Log Content"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Kubernetes%20CronJob/",
@@ -41,5 +92,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1053.003",
+      "name": "Cron",
+      "url": "https://attack.mitre.org/techniques/T1053/003/",
+      "relationship": "sibling_technique",
+      "rationale": "The Azure Kubernetes Sigma rule 'azure_kubernetes_cronjob' is tagged T1053.003 (Cron) rather than T1053.007 (Container Orchestration Job). This reflects the fact that Kubernetes CronJob semantics are modeled on Unix cron, and several SIEM vendors and rules authors apply T1053.003 when detecting K8s CronJob events. Defenders tuning alerts on T1053.003 may miss K8s-specific CronJob detections tagged at T1053.007, and vice versa.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/cloud/azure/activity_logs/azure_kubernetes_cronjob.yml"
+      ]
+    },
+    {
+      "technique_id": "T1059",
+      "name": "Command and Scripting Interpreter",
+      "url": "https://attack.mitre.org/techniques/T1059/",
+      "relationship": "downstream_capability",
+      "rationale": "A Kubernetes CronJob ultimately executes a container that runs a command or script (T1059). MITRE T1053.007 describes it as 'scheduling deployment of a Job that executes malicious code.' The command execution inside the job container maps to T1059 (parent) or T1059.004/T1059.013 specifically. A detection covering only the Job creation (T1053.007) misses the payload execution inside the container.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1053/007/"
+      ]
+    }
+  ]
 }

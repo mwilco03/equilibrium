@@ -3,8 +3,7 @@
   "title": "Exposed sensitive interfaces",
   "description": "Exposing a sensitive interface to the internet or within a cluster without strong authentication poses a security risk. Some popular cluster management services were not intended to be exposed to the internet, and therefore don\u2019t require authentication by default. Thus, exposing such services to the internet allows unauthenticated access to a sensitive interface which might enable running code or deploying containers in the cluster by a malicious actor. Examples of such interfaces that were seen exploited include Apache NiFi, Kubeflow, Argo Workflows, Weave Scope, and the Kubernetes dashboard.  In addition, having such services exposed within the cluster network without strong authentication can also allow an attacker to collect information about other workloads deployed to the cluster. The Kubernetes dashboard is an example of such a service that is used for monitoring and managing the Kubernetes cluster. The dashboard allows users to perform actions in the cluster using its service account (kubernetes-dashboard) with permissions that are determined by the binding or cluster-binding for this service account. Attackers who gain access to a container in the cluster, can use its network access to the dashboard pod. Consequently, attackers may retrieve information about the various resources in the cluster using the dashboard\u2019s identity.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1133",
@@ -26,8 +25,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exposed%20sensitive%20interfaces/",
     "description": "Exposing a sensitive interface to the internet or within a cluster without strong authentication poses a security risk. Some popular cluster management services were not intended to be exposed to the internet, and therefore don\u2019t require authentication by default. Thus, exposing such services to the internet allows unauthenticated access to a sensitive interface which might enable running code or deploying containers in the cluster by a malicious actor. Examples of such interfaces that were seen exploited include Apache NiFi, Kubeflow, Argo Workflows, Weave Scope, and the Kubernetes dashboard.  In addition, having such services exposed within the cluster network without strong authentication can also allow an attacker to collect information about other workloads deployed to the cluster. The Kubernetes dashboard is an example of such a service that is used for monitoring and managing the Kubernetes cluster. The dashboard allows users to perform actions in the cluster using its service account (kubernetes-dashboard) with permissions that are determined by the binding or cluster-binding for this service account. Attackers who gain access to a container in the cluster, can use its network access to the dashboard pod. Consequently, attackers may retrieve information about the various resources in the cluster using the dashboard\u2019s identity."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Access logs from the exposed management interfaces themselves (Kubernetes dashboard, Argo Workflows, Kubeflow, Weave Scope), recording unauthenticated or anomalous access attempts from external or unexpected internal IPs.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes dashboard access log: HTTP request without Authorization header or with anonymous user from external IP",
+        "Argo Workflows: unauthenticated API call to /api/v1/workflows from source outside cluster network",
+        "Kubernetes audit event: user.username=system:anonymous, verb=list, objectRef.resource=pods (indicates unauthenticated dashboard access)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Connection Creation",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "New inbound TCP connections to cluster management service ports (e.g., 8080/8443 for dashboard, 2746 for Argo) from external sources or unexpected internal containers, indicating access to an exposed sensitive interface.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Network flow: inbound connection to NodePort or LoadBalancer IP on port 8080 or 8443 from public internet to kubernetes-dashboard service",
+        "Network flow: container-to-container connection from application pod to kubernetes-dashboard pod on port 8080 (lateral discovery via dashboard)",
+        "Kubernetes Service of type=LoadBalancer with selector matching dashboard or argo-server pods receiving connections from outside cluster CIDR"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Logon Session Creation",
+      "data_source_id": "DS0028",
+      "data_source_name": "Logon Session",
+      "definition": "Session establishment events on the Kubernetes API server or management interfaces using service account tokens belonging to dashboard or workflow components, especially when initiated from external or unusual sources.",
+      "url": "https://attack.mitre.org/datasources/DS0028/",
+      "relevant_events": [
+        "Kubernetes audit event: user.username=system:serviceaccount:kubernetes-dashboard:kubernetes-dashboard, sourceIPs containing external/non-pod IP",
+        "Kubernetes audit event: user.groups contains system:unauthenticated for any verb other than healthz/readyz",
+        "HTTP session cookie or bearer token issuance event in dashboard application logs for anonymous user"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0354",
+      "name": "Behavior-chain detection for T1133 External Remote Services across Windows, Linux, macOS, Containers",
+      "summary": "AN1007 specifically covers connections to exposed container services (Docker API, Kubernetes API server) from unauthorized external IPs, followed by abnormal container creation and lateral cluster activity.",
+      "url": "https://attack.mitre.org/techniques/T1133/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Network Connection Creation",
+        "Logon Session Creation"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Exposed%20sensitive%20interfaces/",
@@ -41,5 +92,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1078",
+      "name": "Valid Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/",
+      "relationship": "upstream_precondition",
+      "rationale": "MITRE's T1133 page states directly: 'Access to Valid Accounts to use the service is often a requirement, which could be obtained through credential pharming or by obtaining the credentials from users after compromising the enterprise network.' An exposed Kubernetes dashboard, Kubeflow, or Docker daemon API may require valid credentials; the T1078 family represents the precondition that allows initial authentication once the interface is discovered.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1133/"
+      ]
+    },
+    {
+      "technique_id": "T1610",
+      "name": "Deploy Container",
+      "url": "https://attack.mitre.org/techniques/T1610/",
+      "relationship": "downstream_capability",
+      "rationale": "An unauthenticated or weakly authenticated Docker API or Kubernetes dashboard (T1133) is most commonly abused to deploy malicious containers (T1610). Atomic Red Team T1610 cites the Kinsing/Doki campaign, which exploited exposed Docker APIs to deploy containers -- the canonical path from exposed interface to container deployment.",
+      "sources": [
+        "https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1610/T1610.md",
+        "https://attack.mitre.org/techniques/T1610/"
+      ]
+    }
+  ]
 }

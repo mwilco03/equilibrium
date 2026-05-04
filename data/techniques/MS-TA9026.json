@@ -3,8 +3,7 @@
   "title": "Mount service principal",
   "description": "When the cluster is deployed in the cloud, in some cases attackers can leverage their access to a container in the cluster to gain cloud credentials. For example, in AKS each node contains service principal credential.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1552.001",
@@ -25,8 +24,70 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Mount%20service%20principal/",
     "description": "When the cluster is deployed in the cloud, in some cases attackers can leverage their access to a container in the cluster to gain cloud credentials. For example, in AKS each node contains service principal credential."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "File Access",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Read access to files containing cloud service principal credentials on an AKS node, typically mounted into a container via hostPath or as a Kubernetes secret.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Container process reading /etc/kubernetes/azure.json or cloud provider credential files on the node",
+        "auditd open() on /var/lib/waagent/ paths or Azure MSI token files from a non-system process",
+        "Falco: Search Private Keys or Passwords rule triggered inside a container"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Commands executed within a container that access cloud credential files, such as cat, cp, or environment variable inspection targeting cloud authentication material.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "`cat /etc/kubernetes/azure.json` or `env | grep -i azure` inside a container",
+        "Mounting of a Kubernetes secret containing a service principal clientSecret and subsequent access",
+        "kubectl exec session retrieving cloud credentials from a running pod"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Process Creation",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "New processes within containers that perform cloud authentication using credential files, such as az login, aws configure, or gcloud auth.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Container spawning `az login --service-principal` with credentials from a mounted file",
+        "curl or wget call to cloud management API endpoints using a service principal token from inside a pod",
+        "AWS CLI or Azure CLI process starting inside a container not in the approved image"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0307",
+      "name": "Detect Access to Unsecured Credential Files Across Platforms",
+      "summary": "AN0859 covers container processes accessing mounted secrets or configuration paths followed by network or credential activity. AN0860 covers cloud credential file access followed by metadata API calls.",
+      "url": "https://attack.mitre.org/techniques/T1552/001/",
+      "data_component_refs": [
+        "File Access",
+        "Command Execution",
+        "Process Creation"
+      ]
+    },
+    {
+      "id": "DET0412",
+      "name": "Detect Access or Search for Unsecured Credentials Across Platforms",
+      "summary": "AN1158 flags unusual access to container image layers or mounted secrets by processes outside the entrypoint context.",
+      "url": "https://attack.mitre.org/techniques/T1552/",
+      "data_component_refs": [
+        "File Access",
+        "Command Execution"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Mount%20service%20principal/",
@@ -41,5 +102,18 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1078.004",
+      "name": "Cloud Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/004/",
+      "relationship": "downstream_capability",
+      "rationale": "Mounting an Azure service principal credential file into a pod (T1552.001) gives the adversary the credentials they need to authenticate as that service principal to the Azure management plane. The next step is using those credentials (T1078.004 Cloud Accounts) to access AKS, Azure Key Vault, or Azure Storage. MITRE T1552.001 page confirms this: 'authenticated user and service account credentials are often stored in local configuration and credential files' and Hildegard malware is cited for searching these files in K8s environments.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/001/",
+        "https://attack.mitre.org/techniques/T1078/004/"
+      ]
+    }
+  ]
 }

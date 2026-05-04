@@ -3,8 +3,7 @@
   "title": "Malicious admission controller",
   "description": "Admission controller is a Kubernetes component that intercepts, and possibly modifies, requests to the Kubernetes API server. There are two types of admissions controllers: validating and mutating controllers. As the name implies, a mutating admission controller can modify the intercepted request and change its properties. Kubernetes has a built-in generic admission controller named MutatingAdmissionWebhook. The behavior of this admission controller is determined by an admission webhook that the user deploys in the cluster. Attackers can use such webhooks for gaining persistence in the cluster. For example, attackers can intercept and modify the pod creation operations in the cluster and add their malicious container to every created pod.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1546",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Malicious%20admission%20controller/",
     "description": "Admission controller is a Kubernetes component that intercepts, and possibly modifies, requests to the Kubernetes API server. There are two types of admissions controllers: validating and mutating controllers. As the name implies, a mutating admission controller can modify the intercepted request and change its properties. Kubernetes has a built-in generic admission controller named MutatingAdmissionWebhook. The behavior of this admission controller is determined by an admission webhook that the user deploys in the cluster. Attackers can use such webhooks for gaining persistence in the cluster. For example, attackers can intercept and modify the pod creation operations in the cluster and add their malicious container to every created pod."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit log recording creation or modification of MutatingWebhookConfiguration and ValidatingWebhookConfiguration objects, which is the primary signal for malicious admission controller deployment.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit event: verb in [create, update, patch], objectRef.apiGroup=admissionregistration.k8s.io, objectRef.resource=mutatingwebhookconfigurations",
+        "Kubernetes audit event: verb in [create, update, patch], objectRef.apiGroup=admissionregistration.k8s.io, objectRef.resource=validatingwebhookconfigurations",
+        "Kubernetes audit event: webhook configuration points to an external URL (clientConfig.url) outside cluster-internal namespace-based service references"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Cluster Metadata",
+      "data_source_id": "DS0031",
+      "data_source_name": "Cluster",
+      "definition": "Cluster-wide configuration state including the set of registered admission webhooks and their service endpoint bindings, used to establish a baseline and detect unauthorized additions.",
+      "url": "https://attack.mitre.org/datasources/DS0031/",
+      "relevant_events": [
+        "Periodic audit of kubectl get mutatingwebhookconfigurations showing webhook rules with namespaceSelector or objectSelector matching all pods",
+        "New webhook registration with failurePolicy=Ignore (attacker uses this to avoid breaking the cluster while still intercepting requests)",
+        "Webhook clientConfig.service pointing to a namespace or service account not associated with any known service mesh or admission control product"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Pod Modification",
+      "data_source_id": "DS0014",
+      "data_source_name": "Pod",
+      "definition": "Pod creation events where the admitted pod spec differs from the requested spec, indicating a mutating webhook has injected additional containers or modified security contexts without operator knowledge.",
+      "url": "https://attack.mitre.org/datasources/DS0014/",
+      "relevant_events": [
+        "Kubernetes audit event: requestObject.spec.containers differs from responseObject.spec.containers for verb=create on pods (webhook mutation detected)",
+        "New container in pod spec not matching any known sidecar injector (e.g., not istio-proxy, vault-agent) after pod is scheduled",
+        "Kubernetes audit event: admission webhook call logged for pod creation where webhook adds containers[] entry with malicious image"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0010",
+      "name": "Behavioral Detection of Event Triggered Execution Across Platforms",
+      "summary": "T1546 is Event Triggered Execution; AN0027 covers cloud function creation triggered by audit log events. For K8s, the webhook registration IS the event trigger setup. The detection chain is: webhook configuration created/modified (audit log) + subsequent pod mutations observed.",
+      "url": "https://attack.mitre.org/techniques/T1546/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Cluster Metadata",
+        "Pod Modification"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Malicious%20admission%20controller/",
@@ -40,5 +91,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1078",
+      "name": "Valid Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/",
+      "relationship": "upstream_precondition",
+      "rationale": "The Sigma rule 'kubernetes_audit_change_admission_controller' (and its identical GCP/Azure variants) tags T1078 alongside T1552.007. Creating or modifying a webhook admission controller requires cluster-admin privileges; the attacker must first authenticate with valid credentials (T1078) to reach the admissionregistration.k8s.io API endpoint. This precondition is documented in both the Sigma rule description ('can be used by an adversary to achieve persistence or exfiltrate access credentials') and the reference to a Padok security blog post.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_change_admission_controller.yml",
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/cloud/azure/activity_logs/azure_kubernetes_admission_controller.yml"
+      ]
+    },
+    {
+      "technique_id": "T1552.007",
+      "name": "Container API",
+      "url": "https://attack.mitre.org/techniques/T1552/007/",
+      "relationship": "downstream_capability",
+      "rationale": "The Sigma rule 'kubernetes_audit_change_admission_controller' is tagged both T1078 and T1552.007. A malicious admission controller intercepts every pod creation request and can extract secrets from pod specs, environment variables, and volume mounts as they pass through -- the credential-exfiltration objective maps to T1552.007 (Container API credential read). The rule description explicitly states: 'exfiltrate access credentials' as an objective.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_change_admission_controller.yml"
+      ]
+    }
+  ]
 }

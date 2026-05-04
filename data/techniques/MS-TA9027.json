@@ -3,8 +3,7 @@
   "title": "Application credentials in configuration files",
   "description": "Developers store secrets in the Kubernetes configuration files, such as environment variables in the pod configuration. Such behavior is commonly seen in clusters that are monitored by Microsoft Defender for Cloud. Attackers who have access to those configurations, by querying the API server or by accessing those files on the developer\u2019s endpoint, can steal the stored secrets and use them.  Using those credentials attackers may gain access to additional resources inside and outside the cluster.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1552",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20credentials%20in%20configuration%20files/",
     "description": "Developers store secrets in the Kubernetes configuration files, such as environment variables in the pod configuration. Such behavior is commonly seen in clusters that are monitored by Microsoft Defender for Cloud. Attackers who have access to those configurations, by querying the API server or by accessing those files on the developer\u2019s endpoint, can steal the stored secrets and use them.  Using those credentials attackers may gain access to additional resources inside and outside the cluster."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "File Access",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Read access to Kubernetes pod spec files, ConfigMaps, or other configuration files containing plaintext credentials stored as environment variables or volume-mounted files.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Container process reading a mounted ConfigMap that contains a password or API key in plaintext",
+        "kubectl exec session running `env` to dump environment variables containing credentials",
+        "File read on a mounted volume containing application config with embedded credentials"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs showing reads of ConfigMaps or pod specs that contain credential data. Also API server queries to retrieve pod environment variable definitions.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "kubectl get pod <name> -o yaml returning env vars with credential keys",
+        "API server: GET /api/v1/namespaces/<ns>/configmaps/<name> returning base64-encoded credentials",
+        "kubectl describe deployment showing environment variables with secret-looking values"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Commands that extract environment variables or read configuration files from running containers.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "`kubectl exec <pod> -- env | grep -i password` or `printenv` inside a container",
+        "`cat /app/config.yaml` inside a container revealing database credentials",
+        "Shell command accessing .env files mounted from Kubernetes ConfigMaps or Secrets"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0412",
+      "name": "Detect Access or Search for Unsecured Credentials Across Platforms",
+      "summary": "AN1158 flags unusual access to container image layers or mounted secrets. The technique involves credentials in config files which are a superset of the mounted secret path.",
+      "url": "https://attack.mitre.org/techniques/T1552/",
+      "data_component_refs": [
+        "File Access",
+        "Application Log Content",
+        "Command Execution"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20credentials%20in%20configuration%20files/",
@@ -40,5 +91,17 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1552.001",
+      "name": "Credentials In Files",
+      "url": "https://attack.mitre.org/techniques/T1552/001/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "T1552 is the parent; T1552.001 (Credentials In Files) is the precise sub-technique covering credentials embedded in application configuration files (environment variables, ConfigMaps, Kubernetes Secrets mounted as files). MITRE T1552.001 explicitly covers container/orchestration credential paths and cites Hildegard malware as a real-world example. The parent mapping (T1552) should be refined to T1552.001 for this scenario.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/001/"
+      ]
+    }
+  ]
 }

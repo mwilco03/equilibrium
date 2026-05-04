@@ -3,8 +3,7 @@
   "title": "container service account",
   "description": "Service account (SA) represents an application identity in Kubernetes. By default, a Service Account access token is mounted to every created pod in the cluster and containers in the pod can send requests to the Kubernetes API server using the Service Account credentials. Attackers who get access to a pod can access the Service Account token (located in `/var/run/secrets/kubernetes.io/serviceaccount/token`) and perform actions in the cluster, according to the Service Account permissions. If RBAC is not enabled, the Service Account has unlimited permissions in the cluster. If RBAC is enabled, its permissions are determined by the RoleBindings \\ ClusterRoleBindings that are associated with it.  An attacker which get access to the Service Account token can also authenticate and access the Kubernetes API server from outside the cluster and maintain access to the cluster.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1528",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/container%20service%20account/",
     "description": "Service account (SA) represents an application identity in Kubernetes. By default, a Service Account access token is mounted to every created pod in the cluster and containers in the pod can send requests to the Kubernetes API server using the Service Account credentials. Attackers who get access to a pod can access the Service Account token (located in `/var/run/secrets/kubernetes.io/serviceaccount/token`) and perform actions in the cluster, according to the Service Account permissions. If RBAC is not enabled, the Service Account has unlimited permissions in the cluster. If RBAC is enabled, its permissions are determined by the RoleBindings \\ ClusterRoleBindings that are associated with it.  An attacker which get access to the Service Account token can also authenticate and access the Kubernetes API server from outside the cluster and maintain access to the cluster."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "User Account Modification",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Changes to service account objects or their associated RBAC bindings in Kubernetes. An attacker who steals a service account token effectively impersonates that account; post-theft API activity shows up as the service account principal.",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Kubernetes audit: requests from system:serviceaccount:<ns>:<name> to resources beyond the SA's normal scope",
+        "Unexpected creation of ClusterRoleBinding granting cluster-admin to a pod service account",
+        "Service account token used to authenticate from a source IP outside the node's subnet"
+      ]
+    },
+    {
+      "id": null,
+      "name": "File Access",
+      "data_source_id": "DS0022",
+      "data_source_name": "File",
+      "definition": "Read access to the service account token file mounted into every pod at /var/run/secrets/kubernetes.io/serviceaccount/token. Detection of this read by an unexpected process indicates token theft.",
+      "url": "https://attack.mitre.org/datasources/DS0022/",
+      "relevant_events": [
+        "Falco: unexpected process (e.g., curl, wget, python) reading /var/run/secrets/kubernetes.io/serviceaccount/token",
+        "auditd: open() syscall on /var/run/secrets/kubernetes.io/serviceaccount/token by non-entrypoint process",
+        "Container exec session running `cat /var/run/secrets/kubernetes.io/serviceaccount/token`"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit logs recording API calls authenticated with a service account JWT. Anomalous resource access patterns using a pod SA token indicate theft.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "API audit log: service account performing `kubectl get secrets` or `kubectl get pods --all-namespaces`",
+        "Service account token used to authenticate from outside the cluster (external IP in audit sourceIPs)",
+        "AN1423: container SA token retrieved then used for unauthorized Kubernetes API requests"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0515",
+      "name": "Detection Strategy for T1528 -- Steal Application Access Token",
+      "summary": "AN1423 directly addresses Kubernetes SA token retrieval followed by unauthorized API requests using that token.",
+      "url": "https://attack.mitre.org/techniques/T1528/",
+      "data_component_refs": [
+        "User Account Modification",
+        "Application Log Content",
+        "File Access"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/container%20service%20account/",
@@ -40,5 +91,38 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1069.003",
+      "name": "Permission Groups Discovery: Cloud Groups",
+      "url": "https://attack.mitre.org/techniques/T1069/003/",
+      "relationship": "tagged_by_community_rules",
+      "rationale": "The Sigma rule 'kubernetes_audit_rbac_permisions_listing' tags T1069.003 and T1087.004. After stealing a service account token (T1528), an adversary runs 'kubectl auth can-i --list' (creating a SelfSubjectRulesReview API resource) to enumerate RBAC permissions. The rule description explicitly states: 'In the early stages of a breach, attackers will aim to list the permissions they have.' This discovery step uses the stolen token and is the immediate post-T1528 action.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_rbac_permisions_listing.yml"
+      ]
+    },
+    {
+      "technique_id": "T1087.004",
+      "name": "Account Discovery: Cloud Account",
+      "url": "https://attack.mitre.org/techniques/T1087/004/",
+      "relationship": "tagged_by_community_rules",
+      "rationale": "The same 'kubernetes_audit_rbac_permisions_listing' Sigma rule also tags T1087.004 (Cloud Account Discovery) alongside T1069.003. This reflects that 'kubectl auth can-i --list' is both a permission-groups discovery and a cloud-account-discovery action in the Kubernetes RBAC context. Defenders should alert on the SelfSubjectRulesReview API call under both IDs.",
+      "sources": [
+        "https://github.com/SigmaHQ/sigma/blob/master/rules/application/kubernetes/audit/kubernetes_audit_rbac_permisions_listing.yml"
+      ]
+    },
+    {
+      "technique_id": "T1550.001",
+      "name": "Application Access Token",
+      "url": "https://attack.mitre.org/techniques/T1550/001/",
+      "relationship": "downstream_capability",
+      "rationale": "T1528 covers stealing the service account token; T1550.001 covers using that stolen token to authenticate and access cluster APIs without re-supplying credentials. MITRE documents this as a distinct step: T1550.001 is the 'use' phase after the 'steal' phase. MITRE T1528 page explicitly references T1550.001 as the technique that uses the stolen OAuth/service account tokens.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1550/001/",
+        "https://attack.mitre.org/techniques/T1528/"
+      ]
+    }
+  ]
 }

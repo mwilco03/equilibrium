@@ -3,8 +3,7 @@
   "title": "ARP poisoning and IP spoofing",
   "description": "Kubernetes has numerous network plugins (Container Network Interfaces or CNIs) that can be used in the cluster. Kubenet is the basic, and in many cases the default, network plugin. In this configuration, a bridge is created on each node (cbr0) to which the various pods are connected using veth pairs. The fact that cross-pod traffic is through a bridge, a level-2 component, means that performing ARP poisoning in the cluster is possible. Therefore, if attackers get access to a pod in the cluster, they can perform ARP poisoning, and spoof the traffic of other pods. By using this technique, attackers can perform several attacks at the network-level which can lead to lateral movements, such as DNS spoofing or stealing cloud identities of other pods (CVE-2021-1677).",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1557",
@@ -26,8 +25,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/ARP%20poisoning%20and%20IP%20spoofing/",
     "description": "Kubernetes has numerous network plugins (Container Network Interfaces or CNIs) that can be used in the cluster. Kubenet is the basic, and in many cases the default, network plugin. In this configuration, a bridge is created on each node (cbr0) to which the various pods are connected using veth pairs. The fact that cross-pod traffic is through a bridge, a level-2 component, means that performing ARP poisoning in the cluster is possible. Therefore, if attackers get access to a pod in the cluster, they can perform ARP poisoning, and spoof the traffic of other pods. By using this technique, attackers can perform several attacks at the network-level which can lead to lateral movements, such as DNS spoofing or stealing cloud identities of other pods (CVE-2021-1677)."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Network flow data showing anomalous ARP behavior or IP spoofing patterns at the pod network layer. Containers with NET_RAW capability can craft spoofed ARP or IP packets.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Gratuitous ARP replies from a pod claiming an IP address belonging to another pod",
+        "Network traffic from a pod using a source IP that does not match the pod's assigned IP",
+        "ARP cache poisoning detected by a CNI plugin or network monitoring agent on the node"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Content",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Packet-level content showing ARP packets or IP packets with spoofed source addresses traversing the cluster network bridge.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "ARP packet with sender MAC not matching the expected MAC for the sender IP on the bridge",
+        "ICMP packet with source IP spoofed to another pod's IP intercepted at the node bridge",
+        "Credential capture from an intercepted pod-to-pod communication session (e.g., DNS query with credentials)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes audit logs or CNI plugin logs recording anomalous network events attributable to ARP spoofing or IP spoofing within the pod network.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "CNI plugin log: IP address conflict detected between pods",
+        "Node-level kernel log: duplicate address detection failure for pod IP",
+        "Service mesh log: mTLS certificate mismatch indicating traffic interception"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0296",
+      "name": "Detect Adversary-in-the-Middle via Network and Configuration Anomalies",
+      "summary": "AN0823 identifies suspicious ARP poisoning attempts. AN0824 monitors unauthorized ARP broadcasts correlated with unexpected network sessions.",
+      "url": "https://attack.mitre.org/techniques/T1557/",
+      "data_component_refs": [
+        "Network Traffic Flow",
+        "Network Traffic Content",
+        "Application Log Content"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/ARP%20poisoning%20and%20IP%20spoofing/",
@@ -41,5 +92,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1557.002",
+      "name": "ARP Cache Poisoning",
+      "url": "https://attack.mitre.org/techniques/T1557/002/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "T1557.002 is the sub-technique specifically covering ARP cache poisoning. The Falco stable rule 'Packet socket created in container' is tagged T1557.002 (not the parent T1557) because creating a raw packet socket is the technical primitive used for ARP poisoning in container networks. The primary mapping is T1557 (parent); T1557.002 is the more specific and correct mapping.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1557/002/",
+        "https://github.com/falcosecurity/rules/blob/main/rules/falco_rules.yaml"
+      ]
+    },
+    {
+      "technique_id": "T1040",
+      "name": "Network Sniffing",
+      "url": "https://attack.mitre.org/techniques/T1040/",
+      "relationship": "downstream_capability",
+      "rationale": "Same as MS-TA9035: MITRE T1040 explicitly names AitM as the context for network sniffing. After ARP poisoning, the adversary positions themselves to sniff plaintext traffic between pods (T1040). The Falco 'Packet socket created in container' rule firing on T1557.002 and the T1040 sniffing activity are sequential steps in the same attack.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1040/"
+      ]
+    }
+  ]
 }

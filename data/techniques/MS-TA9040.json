@@ -3,8 +3,7 @@
   "title": "Denial of service",
   "description": "Attackers may attempt to perform a denial of service attack, which makes the service unavailable to the legitimate users. In container clusters, this include attempts to block the availability of the containers themselves, the underlying nodes, or the API server.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1498",
@@ -25,8 +24,83 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Denial%20of%20service/",
     "description": "Attackers may attempt to perform a denial of service attack, which makes the service unavailable to the legitimate users. In container clusters, this include attempts to block the availability of the containers themselves, the underlying nodes, or the API server."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "High-volume network flows indicating a flood attack originating from or directed at cluster endpoints. Covers T1498 (network-level DoS) from K8s workloads.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Pod generating anomalously high PPS (packets per second) or BPS toward external targets",
+        "Cluster ingress receiving a flood of requests that exhaust service capacity",
+        "netflow showing amplification attack traffic (DNS, NTP) sourced from a cluster node"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Host Status",
+      "data_source_id": "DS0013",
+      "data_source_name": "Sensor Health",
+      "definition": "Node and pod health status including OOM kills, crashloop events, and resource exhaustion. Covers T1499 (endpoint-level DoS) targeting cluster components.",
+      "url": "https://attack.mitre.org/datasources/DS0013/",
+      "relevant_events": [
+        "Kubernetes: pod in CrashLoopBackOff state due to resource exhaustion attack",
+        "Node entering NotReady state due to memory pressure from a resource-exhausting container",
+        "AN0588: container orchestrator logs revealing crashlooping pods or repeated resource exhaustion"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Application and API server logs recording service unavailability or errors caused by DoS conditions. K8s API server slowdown or unavailability under attack generates audit log gaps.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "API server: 429 Too Many Requests or 503 Service Unavailable responses at elevated rate",
+        "Application service log: timeouts or connection refused errors correlating with resource exhaustion",
+        "AN0584: excessive resource exhaustion induced by processes consuming CPU/memory"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Content",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Deep packet inspection of traffic targeting cluster services. Application-layer DoS (T1499) may involve malformed requests or exploit payloads designed to crash services.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "HTTP flood with malformed or oversized payloads targeting an ingress service",
+        "gRPC or WebSocket connection flood causing service thread pool exhaustion",
+        "Kubernetes API server targeted with large list queries causing etcd overload"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0518",
+      "name": "Behavioral Detection of T1498 -- Network Denial of Service Across Platforms",
+      "summary": "AN1434 and AN1435 detect programs/scripts creating substantial outbound network traffic and flooding instruments dispatching high-volume packet streams.",
+      "url": "https://attack.mitre.org/techniques/T1498/",
+      "data_component_refs": [
+        "Network Traffic Flow",
+        "Network Traffic Content"
+      ]
+    },
+    {
+      "id": "DET0208",
+      "name": "Endpoint Resource Saturation and Crash Pattern Detection Across Platforms",
+      "summary": "AN0588 detects container orchestrator logs revealing crashlooping pods, repeated resource exhaustion, or malicious binaries with infinite loops consuming cgroup limits.",
+      "url": "https://attack.mitre.org/techniques/T1499/",
+      "data_component_refs": [
+        "Host Status",
+        "Application Log Content",
+        "Network Traffic Content"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Denial%20of%20service/",
@@ -41,5 +115,29 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1499",
+      "name": "Endpoint Denial of Service",
+      "url": "https://attack.mitre.org/techniques/T1499/",
+      "relationship": "sibling_technique",
+      "rationale": "MITRE explicitly distinguishes T1498 (network bandwidth saturation) from T1499 (endpoint/service exhaustion). In Kubernetes, a DoS attack may target the API server's request handling capacity (T1499.003 Application Exhaustion Flood) or exhaust pod/node resources by creating crashlooping workloads (T1499.001 OS Exhaustion Flood). MITRE T1498 page cross-references T1499 directly: 'For DoS attacks targeting the hosting system directly, see Endpoint Denial of Service (T1499).' Both are needed for complete K8s DoS coverage.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1498/",
+        "https://attack.mitre.org/techniques/T1499/"
+      ]
+    },
+    {
+      "technique_id": "T1499.003",
+      "name": "Application Exhaustion Flood",
+      "url": "https://attack.mitre.org/techniques/T1499/003/",
+      "relationship": "sibling_technique",
+      "rationale": "T1499.003 (Application Exhaustion Flood) covers exhausting application-layer resources -- in Kubernetes this maps to flooding the API server with requests to exhaust its rate-limit capacity, or generating excessive pod scheduling events. MITRE T1499 detection analytics reference 'crashlooping pods' in container orchestrator logs as a K8s-specific indicator. This sub-technique is more specific than the parent T1499 for the K8s API starvation scenario.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1499/003/",
+        "https://attack.mitre.org/techniques/T1499/"
+      ]
+    }
+  ]
 }

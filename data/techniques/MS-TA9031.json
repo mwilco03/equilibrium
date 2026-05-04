@@ -3,8 +3,7 @@
   "title": "Network mapping",
   "description": "Attackers may try to map the cluster network to get information on the running applications, including scanning for known vulnerabilities. By default, there is no restriction on pods communication in Kubernetes. Therefore, attackers who gain access to a single container, may use it to probe the network.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1046",
@@ -25,8 +24,59 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Network%20mapping/",
     "description": "Attackers may try to map the cluster network to get information on the running applications, including scanning for known vulnerabilities. By default, there is no restriction on pods communication in Kubernetes. Therefore, attackers who gain access to a single container, may use it to probe the network."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Network flow data showing inter-pod traffic. Network mapping from a compromised container generates abnormal east-west traffic patterns: sequential port probes across pod CIDR ranges.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Pod generating TCP SYN packets to multiple pod IPs across the cluster CIDR in rapid succession",
+        "Single pod IP contacting dozens of destination IPs across multiple ports within a short time window",
+        "nmap or similar scanner fingerprinted in netflow data from a container source IP"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Command Execution",
+      "data_source_id": "DS0017",
+      "data_source_name": "Command",
+      "definition": "Recording of network scanning commands executed inside containers, such as nmap, netcat, masscan, or custom shell scripts performing port sweeps.",
+      "url": "https://attack.mitre.org/datasources/DS0017/",
+      "relevant_events": [
+        "nmap, masscan, or ncat process execution detected inside a container by Falco or auditd",
+        "Shell script invoking a for-loop with nc -z across a /24 subnet",
+        "Atomic Red Team T1046 container test: image built and scanner script executed"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Cloud Service Enumeration",
+      "data_source_id": "DS0025",
+      "data_source_name": "Cloud Service",
+      "definition": "Cloud provider API calls that enumerate compute instances, VPCs, or subnets from a compromised pod, providing network topology information beyond the cluster.",
+      "url": "https://attack.mitre.org/datasources/DS0025/",
+      "relevant_events": [
+        "AWS DescribeInstances or DescribeSubnets called from a pod using node instance role credentials",
+        "Azure Resource Manager API: list virtual machines called from within a container",
+        "GCP: compute.instances.list called using workload identity from a pod"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0376",
+      "name": "Behavioral Detection Strategy for Network Service Discovery Across Platforms",
+      "summary": "AN1060 specifically detects lateral discovery or container breakout using netcat, curl, or custom binaries probing services within the same namespace/VPC subnet.",
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "data_component_refs": [
+        "Network Traffic Flow",
+        "Command Execution"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Network%20mapping/",
@@ -40,5 +90,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1613",
+      "name": "Container and Resource Discovery",
+      "url": "https://attack.mitre.org/techniques/T1613/",
+      "relationship": "sibling_technique",
+      "rationale": "Network mapping inside a Kubernetes cluster (T1046) is commonly performed alongside container/resource enumeration via the API (T1613). Hildegard malware performed both: masscan for network port discovery (T1046) and Kubernetes API enumeration (T1613) in the same attack chain. The Falco incubating rule 'Network Connection outside Local Subnet' is tagged T1046 and fires on outbound network connections from containers -- defenders need both T1046 (port scan) and T1613 (API query) coverage.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1613/",
+        "https://github.com/falcosecurity/rules/blob/main/rules/falco-incubating_rules.yaml"
+      ]
+    },
+    {
+      "technique_id": "T1210",
+      "name": "Exploitation of Remote Services",
+      "url": "https://attack.mitre.org/techniques/T1210/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE T1210 explicitly states: 'adversaries use Network Service Discovery (T1046) to identify vulnerable systems before exploitation.' In a Kubernetes environment, network mapping (T1046) identifies services in adjacent pods and nodes that can then be exploited for lateral movement (T1210). This T1046 -> T1210 chain is stated directly on the T1210 MITRE page.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1210/"
+      ]
+    }
+  ]
 }

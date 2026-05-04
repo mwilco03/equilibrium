@@ -3,8 +3,7 @@
   "title": "Application Vulnerability",
   "description": "Running a public-facing vulnerable application in a cluster can enable initial access to the cluster. A container that runs an application that is vulnerable to remote code execution vulnerability (RCE) may be exploited. If service account is mounted to the container (default behavior in Kubernetes), the attacker will be able to send requests to the API server using this service account credentials.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1190",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20Vulnerability/",
     "description": "Running a public-facing vulnerable application in a cluster can enable initial access to the cluster. A container that runs an application that is vulnerable to remote code execution vulnerability (RCE) may be exploited. If service account is mounted to the container (default behavior in Kubernetes), the attacker will be able to send requests to the API server using this service account credentials."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Ingress controller, web application firewall, and application-level logs recording exploit attempt patterns against vulnerable containerized applications, including anomalous HTTP methods, oversized payloads, and deserialization attack signatures.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Ingress controller (nginx/traefik) access log: 4xx/5xx spike from single source IP, suspicious URI patterns (e.g., /../, %00, JNDI:// strings)",
+        "Web application log: unexpected deserialization or template injection pattern in request body",
+        "Kubernetes audit event: verb=create, objectRef.resource=pods/exec from the application's own service account (indicates post-exploit pivot)"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Process Creation",
+      "data_source_id": "DS0009",
+      "data_source_name": "Process",
+      "definition": "Process creation events inside the containerized application's process namespace, showing shells or unusual child processes spawned by the application process tree, which indicates successful RCE.",
+      "url": "https://attack.mitre.org/datasources/DS0009/",
+      "relevant_events": [
+        "Falco event: spawned_process, container=true, proc.pname in [java, python, node, php, ruby], proc.name in [bash, sh, dash, curl, wget, nc]",
+        "Linux auditd: EXECVE record inside container namespace showing shell spawned by web server process",
+        "Container runtime log: unexpected exec event on existing container by application process"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Outbound network connections from the vulnerable application container to external IPs or to the Kubernetes API server, indicating successful exploitation and subsequent C2 or lateral movement to the cluster.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "Network policy violation: container egress to non-whitelisted external IP after application process spawned shell",
+        "Connection to Kubernetes API server (10.0.0.1:443 or kube-apiserver FQDN) from application container using pod service account token",
+        "Outbound connection to cloud metadata endpoint (169.254.169.254) from application container"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0080",
+      "name": "Exploit Public-Facing Application \u2013 multi-signal correlation (request to error to post-exploit process/egress)",
+      "summary": "Multi-signal chain: suspicious ingress/app logs, container process spawning a shell or exec, then egress to metadata API or external C2. AN0222 specifically covers containerized app exploitation via ingress.",
+      "url": "https://attack.mitre.org/techniques/T1190/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Process Creation",
+        "Network Traffic Flow"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Application%20Vulnerability/",
@@ -40,5 +91,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1611",
+      "name": "Escape to Host",
+      "url": "https://attack.mitre.org/techniques/T1611/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE's T1190 detection text explicitly names container breakout as a downstream consequence of exploiting a public-facing containerized application: 'container and Kubernetes-based attacks' appears in detection analytic AN0222. The T1611 page cross-references T1068 (Exploitation for Privilege Escalation) as the mechanism, and MITRE's T1190 page mentions T1611 directly in its detection chain.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1190/",
+        "https://attack.mitre.org/techniques/T1611/"
+      ]
+    },
+    {
+      "technique_id": "T1059",
+      "name": "Command and Scripting Interpreter",
+      "url": "https://attack.mitre.org/techniques/T1059/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE's T1190 detection strategy AN0219-AN0224 describes the canonical post-exploit chain as 'abnormal request to public endpoint -> server process spawns shell/LOLbins'. The shell invocation that follows a successful exploit maps to T1059 (and more specifically T1059.004 Unix Shell or T1059.013 Container CLI/API). Defenders must alert on T1059 events from web-server processes to detect the T1190 exploitation moment.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1190/"
+      ]
+    }
+  ]
 }

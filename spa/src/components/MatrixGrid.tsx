@@ -100,7 +100,7 @@ function TechniqueCard({ t }: { t: TechniqueRecord }) {
           : "border-zinc-800 hover:border-cyan-500")
       }
     >
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center gap-1 text-xs text-zinc-500">
         <span className="font-mono">{t.microsoft_k8s_matrix.id ?? t.id}</span>
         {t.mitre_attack ? (
           <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-400">
@@ -111,6 +111,30 @@ function TechniqueCard({ t }: { t: TechniqueRecord }) {
             no MITRE map
           </span>
         )}
+        {(t.mitre_cross_references ?? [])
+          .filter((cr) => cr.relationship !== "post_execution_linux_overlay")
+          .map((cr) => (
+            <span
+              key={cr.technique_id}
+              title={`${cr.relationship.replace(/_/g, " ")}: ${cr.rationale.slice(0, 120)}...`}
+              className="rounded bg-zinc-800/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500"
+            >
+              +{cr.technique_id}
+            </span>
+          ))}
+        {(() => {
+          const overlayCount = (t.mitre_cross_references ?? []).filter(
+            (cr) => cr.relationship === "post_execution_linux_overlay",
+          ).length;
+          return overlayCount > 0 ? (
+            <span
+              title="Post-execution Linux techniques that apply once an adversary has in-container execution"
+              className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-200"
+            >
+              +{overlayCount} Linux overlay
+            </span>
+          ) : null;
+        })()}
       </div>
       <div className="mt-1 font-medium">{t.title}</div>
 

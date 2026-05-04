@@ -3,8 +3,7 @@
   "title": "Access managed identity credentials",
   "description": "Managed identities are identities that are managed by the cloud provider and can be allocated to cloud resources, such as virtual machines. Those identities are used to authenticate with cloud services. The identity\u2019s secret is fully managed by the cloud provider, which eliminates the need to manage the credentials. Applications can obtain the identity\u2019s token by accessing the Instance Metadata Service (IMDS). Attackers who get access to a Kubernetes pod can leverage their access to the IMDS endpoint to get the managed identity\u2019s token. With a token, the attackers can access cloud resources.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1552.005",
@@ -25,8 +24,60 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20managed%20identity%20credentials/",
     "description": "Managed identities are identities that are managed by the cloud provider and can be allocated to cloud resources, such as virtual machines. Those identities are used to authenticate with cloud services. The identity\u2019s secret is fully managed by the cloud provider, which eliminates the need to manage the credentials. Applications can obtain the identity\u2019s token by accessing the Instance Metadata Service (IMDS). Attackers who get access to a Kubernetes pod can leverage their access to the IMDS endpoint to get the managed identity\u2019s token. With a token, the attackers can access cloud resources."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "User Account Authentication",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Authentication events using managed identity tokens obtained from the cloud IMDS endpoint. These tokens authenticating to cloud APIs from unexpected sources indicate theft.",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Cloud audit log: managed identity token used from a source IP that is not a known node IP",
+        "Azure Activity Log: operation performed by a managed identity from an unexpected client application",
+        "AWS CloudTrail: AssumeRole using pod identity from a non-pod source IP"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Network Traffic Flow",
+      "data_source_id": "DS0029",
+      "data_source_name": "Network Traffic",
+      "definition": "Network connections from container processes to the cloud IMDS endpoint (169.254.169.254). Expected only from specific workloads; unexpected access from a container indicates IMDS token theft.",
+      "url": "https://attack.mitre.org/datasources/DS0029/",
+      "relevant_events": [
+        "HTTP GET to 169.254.169.254/metadata/identity/oauth2/token from a pod not configured with managed identity",
+        "Azure IMDS endpoint queried from within a container that is not in the approved workload identity list",
+        "Network policy violation: pod egress to 169.254.169.254 blocked and logged"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Cloud provider audit logs (Azure Activity Log, AWS CloudTrail) recording API calls made with managed identity tokens that originated from a container workload.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Azure: Resource Manager API called with a managed identity token by an unexpected resource",
+        "AWS: EC2 instance metadata credentials used from a container pod IP not matching expected node",
+        "GCP: Workload Identity token used for Cloud API access from unexpected service account binding"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0001",
+      "name": "Detect Access to Cloud Instance Metadata API (IaaS)",
+      "summary": "AN0001 identifies attempts to reach cloud metadata endpoints like 169.254.169.254 from virtual machines or containerized environments, covering SSRF exploitation methods.",
+      "url": "https://attack.mitre.org/techniques/T1552/005/",
+      "data_component_refs": [
+        "Network Traffic Flow",
+        "User Account Authentication",
+        "Application Log Content"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Access%20managed%20identity%20credentials/",
@@ -41,5 +92,18 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1078.004",
+      "name": "Cloud Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/004/",
+      "relationship": "downstream_capability",
+      "rationale": "Querying the Instance Metadata Service to obtain a managed identity token (T1552.005) is the credential-acquisition step; using that token to authenticate as a cloud service principal and access Azure/AWS/GCP resources is T1078.004 (Cloud Accounts). These two techniques describe successive steps in the same attack: credential theft from IMDS followed by cloud API access.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1552/005/",
+        "https://attack.mitre.org/techniques/T1078/004/"
+      ]
+    }
+  ]
 }

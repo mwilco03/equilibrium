@@ -124,6 +124,43 @@
       },
       "additionalProperties": false
     },
+    "MitreCrossReference": {
+      "type": "object",
+      "description": "A secondary MITRE ATT&CK technique that this record relates to but is not the primary mapping. Use for: cases where community detection content (Sigma, Falco, EDR) tags a different MITRE ID than the canonical one; cases where a more-specific sub-technique exists; cases where the technique enables a downstream technique. Each entry must cite the source(s) that establish the relationship.",
+      "required": ["technique_id", "relationship", "rationale"],
+      "properties": {
+        "technique_id": {
+          "type": "string",
+          "pattern": "^T\\d{4}(\\.\\d{3})?$"
+        },
+        "name": { "type": "string" },
+        "url": { "$ref": "#/$defs/Url" },
+        "relationship": {
+          "type": "string",
+          "enum": [
+            "more_specific_subtechnique",
+            "parent_technique",
+            "downstream_capability",
+            "upstream_precondition",
+            "tagged_by_community_rules",
+            "supply_chain_relationship",
+            "sibling_technique",
+            "post_execution_linux_overlay"
+          ],
+          "description": "How this cross-referenced technique relates to the primary MITRE technique."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Plain-language explanation of why this cross-reference is meaningful for defenders. Should be specific, not generic."
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Url" },
+          "description": "URLs that establish the relationship: the Sigma rule, the Falco rule, the MITRE sub-technique page, etc."
+        }
+      },
+      "additionalProperties": false
+    },
     "DetectionStrategy": {
       "type": "object",
       "description": "MITRE ATT&CK Detection Strategy or analytic referenced by this technique.",
@@ -285,6 +322,11 @@
       "description": "MITRE ATT&CK mapping. Null when the Microsoft K8s technique has no MITRE counterpart (4 such cases in the matrix as of 2026-05-04: Collecting Data from Pod, Kubeconfig file, SSH server running inside container, Static Pods)."
     },
     "microsoft_k8s_matrix": { "$ref": "#/$defs/MicrosoftK8sMatrix" },
+    "mitre_cross_references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/MitreCrossReference" },
+      "description": "Secondary MITRE technique mappings that defenders should know about. Optional. See $defs/MitreCrossReference for the relationship taxonomy."
+    },
     "data_components": {
       "type": "array",
       "items": { "$ref": "#/$defs/DataComponent" },

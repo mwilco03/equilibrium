@@ -81,6 +81,25 @@ export interface DataComponent {
   relevant_events?: string[];
 }
 
+export type CrossReferenceRelationship =
+  | "more_specific_subtechnique"
+  | "parent_technique"
+  | "downstream_capability"
+  | "upstream_precondition"
+  | "tagged_by_community_rules"
+  | "supply_chain_relationship"
+  | "sibling_technique"
+  | "post_execution_linux_overlay";
+
+export interface MitreCrossReference {
+  technique_id: string;
+  name?: string;
+  url?: string;
+  relationship: CrossReferenceRelationship;
+  rationale: string;
+  sources?: string[];
+}
+
 export interface DetectionStrategy {
   id: string;
   name: string;
@@ -129,6 +148,7 @@ export interface TechniqueRecord {
   // counterpart (e.g., MS-TA9041 Collecting Data from Pod).
   mitre_attack: MitreAttack | null;
   microsoft_k8s_matrix: MicrosoftK8sMatrix;
+  mitre_cross_references?: MitreCrossReference[];
   data_components: DataComponent[];
   detection_strategies?: DetectionStrategy[];
   vendor_detections?: VendorDetection[];

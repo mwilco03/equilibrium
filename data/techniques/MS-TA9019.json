@@ -3,8 +3,7 @@
   "title": "Cluster-admin binding",
   "description": "Role-based access control (RBAC) is a key security feature in Kubernetes. RBAC can restrict the allowed actions of the various identities in the cluster. Cluster-admin is a built-in high privileged role in Kubernetes. Attackers who have permissions to create bindings and cluster-bindings in the cluster can create a binding to the cluster-admin ClusterRole or to other high privileges roles.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1078.003",
@@ -25,8 +24,69 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Cluster-admin%20binding/",
     "description": "Role-based access control (RBAC) is a key security feature in Kubernetes. RBAC can restrict the allowed actions of the various identities in the cluster. Cluster-admin is a built-in high privileged role in Kubernetes. Attackers who have permissions to create bindings and cluster-bindings in the cluster can create a binding to the cluster-admin ClusterRole or to other high privileges roles."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit log recording creation or modification of ClusterRoleBindings and RoleBindings, especially those granting cluster-admin or other high-privilege roles to subjects not previously holding them.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit event: verb=create, objectRef.apiGroup=rbac.authorization.k8s.io, objectRef.resource=clusterrolebindings where roleRef.name=cluster-admin",
+        "Kubernetes audit event: verb=create, objectRef.apiGroup=rbac.authorization.k8s.io, objectRef.resource=rolebindings where roleRef.name in [cluster-admin, admin, edit] and objectRef.namespace=kube-system",
+        "Kubernetes audit event: verb in [update, patch], objectRef.resource=clusterrolebindings - any modification to an existing cluster-admin binding subjects list"
+      ]
+    },
+    {
+      "id": null,
+      "name": "User Account Modification",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Changes to Kubernetes RBAC bindings that effectively modify a user's or service account's permission set - equivalent to modifying a user's group membership or role assignment in an identity system.",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Kubernetes audit event: new ClusterRoleBinding created binding a service account, user, or group to cluster-admin ClusterRole",
+        "Kubernetes audit event: existing ClusterRoleBinding patched to add a new subject (subjects[] modified) for a high-privilege role",
+        "Cloud provider IAM event: AKS Azure AD group added to cluster-admin binding, or EKS aws-auth ConfigMap modified to add new user ARN"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Cluster Metadata",
+      "data_source_id": "DS0031",
+      "data_source_name": "Cluster",
+      "definition": "Periodic enumeration of cluster-wide RBAC state (ClusterRoleBindings, RoleBindings) to detect unauthorized bindings to privileged roles, used as a baseline comparison or policy enforcement check.",
+      "url": "https://attack.mitre.org/datasources/DS0031/",
+      "relevant_events": [
+        "kubectl get clusterrolebindings -o json: any subject with namespace that is not kube-system bound to cluster-admin",
+        "RBAC audit tool output: service account in user namespace with cluster-admin ClusterRoleBinding (policy violation)",
+        "Admission controller (OPA/Gatekeeper) constraint violation: ClusterRoleBinding creation blocked or alerted for binding to cluster-admin role by non-privileged principal"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0407",
+      "name": "Detection of Local Account Abuse for Initial Access and Persistence",
+      "summary": "AN1137-AN1139 cover anomalous usage of local accounts outside expected context. In K8s, the Kubernetes ServiceAccount and User subjects in RBAC bindings are the local account equivalents. AN1139 (abnormal logins via local accounts via SSH) maps to unexpected use of newly-bound cluster-admin service accounts.",
+      "url": "https://attack.mitre.org/techniques/T1078/003/",
+      "data_component_refs": [
+        "Application Log Content",
+        "User Account Modification"
+      ]
+    },
+    {
+      "id": "DET0560",
+      "name": "Detection of Valid Account Abuse Across Platforms",
+      "summary": "AN1547 specifically covers containerized service account misuse for cluster access from unexpected nodes or IPs, which is the downstream effect of an illegitimate cluster-admin binding being used.",
+      "url": "https://attack.mitre.org/techniques/T1078/",
+      "data_component_refs": [
+        "Application Log Content",
+        "Cluster Metadata"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Cluster-admin%20binding/",
@@ -41,5 +101,28 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1098.006",
+      "name": "Additional Container Cluster Roles",
+      "url": "https://attack.mitre.org/techniques/T1098/006/",
+      "relationship": "more_specific_subtechnique",
+      "rationale": "T1098.006 explicitly covers 'an adversary may add additional roles or permissions to an adversary-controlled user or service account' via Kubernetes RoleBinding or ClusterRoleBinding. The detection text describes 'assignment of high-privilege roles via ClusterRoleBinding objects.' This is more specific than T1078.003 for the cluster-admin binding scenario: T1078.003 covers abusing an account that already has access, while T1098.006 covers the act of granting elevated roles -- which is exactly what 'cluster-admin binding' means.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1098/006/"
+      ]
+    },
+    {
+      "technique_id": "T1078.004",
+      "name": "Cloud Accounts",
+      "url": "https://attack.mitre.org/techniques/T1078/004/",
+      "relationship": "sibling_technique",
+      "rationale": "In managed Kubernetes (AKS, GKE, EKS), cluster-admin bindings can be granted to cloud IAM identities (service principals, GCP service accounts, IAM roles). When the binding is to a cloud identity rather than a local/kubeconfig user, the operative technique is T1078.004 (Cloud Accounts), not T1078.003 (Local Accounts). Defenders should cover both variants of the valid-account family when auditing cluster-admin ClusterRoleBindings.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1078/004/",
+        "https://attack.mitre.org/techniques/T1098/006/"
+      ]
+    }
+  ]
 }

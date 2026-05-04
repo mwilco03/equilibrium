@@ -3,8 +3,7 @@
   "title": "Using Cloud Credentials",
   "description": "In cases where the Kubernetes cluster is deployed in a public cloud (e.g., AKS in Azure, GKE in GCP, or EKS in AWS), compromised cloud credential can lead to cluster takeover. Attackers who have access to the cloud account credentials can get access to the cluster\u2019s management layer.",
   "tags": [
-    "kubernetes",
-    "stub"
+    "kubernetes"
   ],
   "mitre_attack": {
     "technique_id": "T1078.004",
@@ -28,8 +27,69 @@
     "url": "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Using%20Cloud%20Credentials/",
     "description": "In cases where the Kubernetes cluster is deployed in a public cloud (e.g., AKS in Azure, GKE in GCP, or EKS in AWS), compromised cloud credential can lead to cluster takeover. Attackers who have access to the cloud account credentials can get access to the cluster\u2019s management layer."
   },
-  "data_components": [],
-  "detection_strategies": [],
+  "data_components": [
+    {
+      "id": null,
+      "name": "User Account Authentication",
+      "data_source_id": "DS0002",
+      "data_source_name": "User Account",
+      "definition": "Authentication events from cloud identity providers recording when cloud credentials (IAM user keys, service principal credentials, managed identity tokens) are used to authenticate to cloud Kubernetes management APIs (AKS, GKE, EKS).",
+      "url": "https://attack.mitre.org/datasources/DS0002/",
+      "relevant_events": [
+        "Azure AD sign-in log: appDisplayName='Azure Kubernetes Service AAD Server', resultType=0 (success) from unexpected IP or location",
+        "AWS CloudTrail: eventSource=eks.amazonaws.com, eventName=DescribeCluster or GetToken with unusual userIdentity.arn",
+        "GCP Cloud Audit Log: methodName=google.container.v1.ClusterManager.GetCluster from unexpected service account"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Application Log Content",
+      "data_source_id": "DS0015",
+      "data_source_name": "Application Log",
+      "definition": "Kubernetes API server audit log entries showing cluster management operations initiated via cloud credentials, indicating post-compromise use of stolen cloud account tokens.",
+      "url": "https://attack.mitre.org/datasources/DS0015/",
+      "relevant_events": [
+        "Kubernetes audit event: verb=list, objectRef.resource=pods, user.username matching cloud-provider IAM pattern (e.g., system:serviceaccount:kube-system or ARN-formatted principal) from unusual source IP",
+        "Kubernetes audit event: verb=get, objectRef.resource=secrets from cloud-managed identity outside expected namespace",
+        "Cloud provider audit log: call to GetCredentials or az aks get-credentials from unknown client IP"
+      ]
+    },
+    {
+      "id": null,
+      "name": "Logon Session Creation",
+      "data_source_id": "DS0028",
+      "data_source_name": "Logon Session",
+      "definition": "Cloud provider IAM session creation events that precede Kubernetes API access, capturing the moment a compromised cloud credential establishes an authenticated session.",
+      "url": "https://attack.mitre.org/datasources/DS0028/",
+      "relevant_events": [
+        "AWS STS: AssumeRole event for a role with eks:DescribeCluster permissions from an unexpected principal or IP",
+        "Azure: token issuance event in Azure AD for AKS audience from unrecognized device or location",
+        "GCP: google.oauth2.service_accounts.generateAccessToken for a service account with container.clusters.get permission from unexpected origin"
+      ]
+    }
+  ],
+  "detection_strategies": [
+    {
+      "id": "DET0546",
+      "name": "Detection of Abused or Compromised Cloud Accounts for Access and Persistence",
+      "summary": "Correlates anomalous cloud authentication patterns (impossible geolocations, legacy protocols, API scope anomalies) that precede or accompany Kubernetes cluster access via cloud management plane.",
+      "url": "https://attack.mitre.org/techniques/T1078/004/",
+      "data_component_refs": [
+        "User Account Authentication",
+        "Logon Session Creation"
+      ]
+    },
+    {
+      "id": "DET0560",
+      "name": "Detection of Valid Account Abuse Across Platforms",
+      "summary": "Broader cross-platform detection covering compromised valid accounts; analytics AN1546 (IdP geographic anomalies) and AN1547 (containerized service account misuse from unexpected nodes/IPs) are most relevant here.",
+      "url": "https://attack.mitre.org/techniques/T1078/",
+      "data_component_refs": [
+        "User Account Authentication",
+        "Application Log Content"
+      ]
+    }
+  ],
   "vendor_detections": [],
   "references": [
     "https://microsoft.github.io/Threat-Matrix-for-Kubernetes/techniques/Using%20Cloud%20Credentials/",
@@ -44,5 +104,27 @@
     "contributors": [
       "equilibrium-bootstrap"
     ]
-  }
+  },
+  "mitre_cross_references": [
+    {
+      "technique_id": "T1059.009",
+      "name": "Cloud API",
+      "url": "https://attack.mitre.org/techniques/T1059/009/",
+      "relationship": "downstream_capability",
+      "rationale": "MITRE's T1078.004 procedure text explicitly states that adversaries with compromised cloud accounts use Cloud API commands to access sensitive data in storage accounts and interact with Kubernetes management APIs. After obtaining cloud credentials an adversary's first observable action is typically a Cloud API call (e.g., az aks get-credentials, aws eks get-token, gcloud container clusters get-credentials) -- these calls map to T1059.009, not T1078.004 itself.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1078/004/"
+      ]
+    },
+    {
+      "technique_id": "T1528",
+      "name": "Steal Application Access Token",
+      "url": "https://attack.mitre.org/techniques/T1528/",
+      "relationship": "sibling_technique",
+      "rationale": "MITRE's T1078.004 page explicitly names T1528 as a follow-on: 'Compromising resources with Managed Identities enables Steal Application Access Tokens.' In AKS and GKE, managed identity tokens obtained via the cloud management plane can be re-used in container workloads. Defenders who alert on T1078.004 must also cover the token-theft pivot T1528 captures.",
+      "sources": [
+        "https://attack.mitre.org/techniques/T1078/004/"
+      ]
+    }
+  ]
 }
